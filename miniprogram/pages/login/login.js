@@ -10,9 +10,12 @@ Page({
     onLoad() { },
 
     onInputUsername(e) {
-        // 只允许字母、数字和下划线
-        const value = e.detail.value.replace(/[^a-zA-Z0-9_]/g, "");
+        const value = e.detail.value;
         this.setData({ username: value });
+        // 注册模式下检测到非法字符时提示
+        if (this.data.isRegister && value && /[^a-zA-Z0-9_]/.test(value)) {
+            wx.showToast({ title: "用户名只能包含字母、数字和下划线", icon: "none" });
+        }
     },
 
     onInputPassword(e) {
