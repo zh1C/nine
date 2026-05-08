@@ -11,6 +11,24 @@ Page({
   },
 
   onLoad() {
+    this.checkPermission();
+  },
+
+  // 权限校验：仅管理员可访问
+  checkPermission() {
+    const app = getApp();
+    const userInfo = app.globalData.userInfo;
+    if (!userInfo || userInfo.role !== "admin") {
+      wx.showModal({
+        title: "无权限",
+        content: "仅管理员可以管理菜品",
+        showCancel: false,
+        success: () => {
+          wx.navigateBack();
+        },
+      });
+      return;
+    }
     this.loadDishes();
   },
 

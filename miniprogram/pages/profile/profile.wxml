@@ -1,0 +1,62 @@
+<!--pages/profile/profile.wxml-->
+<view class="profile-page">
+  <!-- 头像区域 -->
+  <view class="avatar-section">
+    <view class="avatar-wrapper" bindtap="chooseAvatar">
+      <image class="avatar-img" wx:if="{{avatar}}" src="{{avatar}}" mode="aspectFill"></image>
+      <view class="avatar-placeholder" wx:else>
+        <text class="avatar-icon">📷</text>
+        <text class="avatar-tip">点击上传</text>
+      </view>
+      <view class="avatar-edit-badge">换</view>
+    </view>
+  </view>
+
+  <!-- 基本信息 -->
+  <view class="info-section">
+    <view class="section-title">基本信息</view>
+    <view class="info-card">
+      <view class="info-item">
+        <text class="info-label">用户名</text>
+        <view class="info-value disabled">
+          <text>{{username}}</text>
+          <text class="lock-icon">🔒</text>
+        </view>
+      </view>
+      <view class="info-item">
+        <text class="info-label">别名</text>
+        <input class="info-input" value="{{nickname}}" bindinput="onInputNickname" placeholder="请输入别名" />
+      </view>
+      <view class="info-item">
+        <text class="info-label">角色</text>
+        <view class="info-value disabled">
+          <text>{{roleText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 修改密码 -->
+  <view class="password-section">
+    <view class="section-title">修改密码</view>
+    <view class="info-card">
+      <view class="info-item">
+        <text class="info-label">原密码</text>
+        <input class="info-input" type="text" password="{{true}}" value="{{oldPassword}}" bindinput="onInputOldPwd" placeholder="请输入原密码" />
+      </view>
+      <view class="info-item">
+        <text class="info-label">新密码</text>
+        <input class="info-input" type="text" password="{{true}}" value="{{newPassword}}" bindinput="onInputNewPwd" placeholder="请输入新密码" />
+      </view>
+      <view class="info-item">
+        <text class="info-label">确认密码</text>
+        <input class="info-input" type="text" password="{{true}}" value="{{confirmPassword}}" bindinput="onInputConfirmPwd" placeholder="请再次输入新密码" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="btn-group">
+    <button class="save-btn" bindtap="saveProfile" loading="{{saving}}">保存修改</button>
+  </view>
+</view>

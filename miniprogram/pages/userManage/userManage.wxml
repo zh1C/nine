@@ -1,0 +1,54 @@
+<!--pages/userManage/userManage.wxml-->
+<view class="user-manage-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索用户名/别名..." value="{{keyword}}" bindinput="onInputSearch" bindconfirm="handleSearch" />
+    <view class="search-btn" bindtap="handleSearch">
+      <text>搜索</text>
+    </view>
+    <view class="clear-btn" wx:if="{{keyword}}" bindtap="clearSearch">
+      <text>清除</text>
+    </view>
+  </view>
+
+  <!-- 用户列表 -->
+  <view class="user-list">
+    <view class="user-card" wx:for="{{users}}" wx:key="_id">
+      <view class="user-info">
+        <view class="user-avatar">
+          <image class="avatar-img" wx:if="{{item.avatar}}" src="{{item.avatar}}" mode="aspectFill"></image>
+          <view class="avatar-default" wx:else>
+            <text>👤</text>
+          </view>
+        </view>
+        <view class="user-detail">
+          <text class="user-nickname">{{item.nickname || item.username}}</text>
+          <text class="user-username">@{{item.username}}</text>
+          <view class="user-meta">
+            <text class="user-role {{item.role === 'admin' ? 'role-admin' : 'role-user'}}">{{item.role === 'admin' ? '管理员' : '普通用户'}}</text>
+            <text class="user-time" wx:if="{{item.createTimeStr}}">注册: {{item.createTimeStr}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="user-actions" wx:if="{{item.role !== 'admin'}}">
+        <view class="delete-btn" bindtap="deleteUser" data-username="{{item.username}}" data-nickname="{{item.nickname || item.username}}">
+          <text>删除</text>
+        </view>
+      </view>
+      <view class="user-actions" wx:else>
+        <text class="admin-badge">管理员</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && users.length === 0}}">
+    <text class="empty-icon">👥</text>
+    <text class="empty-text">暂无用户数据</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

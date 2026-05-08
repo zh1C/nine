@@ -18,7 +18,7 @@ App({
   },
 
   globalData: {
-    userInfo: null,
+    userInfo: null, // { _id, username, nickname, avatar, role }
     isLogin: false,
   },
 });

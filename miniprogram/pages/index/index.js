@@ -2,6 +2,7 @@
 Page({
   data: {
     userInfo: null,
+    isAdmin: false,
   },
 
   onLoad() {
@@ -18,7 +19,11 @@ Page({
       wx.reLaunch({ url: "/pages/login/login" });
       return;
     }
-    this.setData({ userInfo: app.globalData.userInfo });
+    const userInfo = app.globalData.userInfo;
+    this.setData({
+      userInfo,
+      isAdmin: userInfo && userInfo.role === "admin",
+    });
   },
 
   navigateTo(e) {
@@ -41,4 +46,11 @@ Page({
     });
   },
 
+  // 转发给朋友
+  onShareAppMessage() {
+    return {
+      title: "9号菜单",
+      path: "/pages/login/login",
+    };
+  },
 });

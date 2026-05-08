@@ -47,7 +47,13 @@ Page({
                     this.setData({ isRegister: false, password: "" });
                 } else {
                     // 登录成功
-                    const userInfo = { username: result.data.username, role: result.data.role };
+                    const userInfo = {
+                        _id: result.data._id,
+                        username: result.data.username,
+                        nickname: result.data.nickname,
+                        avatar: result.data.avatar,
+                        role: result.data.role,
+                    };
                     wx.setStorageSync("userInfo", userInfo);
                     getApp().globalData.userInfo = userInfo;
                     getApp().globalData.isLogin = true;

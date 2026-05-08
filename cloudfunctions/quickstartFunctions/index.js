@@ -39,7 +39,9 @@ const register = async (event) => {
         openid: wxContext.OPENID,
         username,
         password, // 实际生产中应加密
-        role: "user",
+        nickname: username, // 默认别名等于用户名
+        avatar: "", // 默认无头像
+        role: "user", // 默认普通用户
         createTime: db.serverDate(),
       },
     });
@@ -63,9 +65,140 @@ const login = async (event) => {
     if (res.data.length === 0) {
       return { success: false, errMsg: "用户名或密码错误" };
     }
-    return { success: true, data: { username, role: res.data[0].role } };
+    const user = res.data[0];
+    return {
+      success: true,
+      data: {
+        _id: user._id,
+        username: user.username,
+        nickname: user.nickname || user.username,
+        avatar: user.avatar || "",
+        role: user.role || "user",
+      },
+    };
   } catch (e) {
     return { success: false, errMsg: e.message || "登录失败" };
+  }
+};
+
+// ============ 用户管理模块 ============
+
+// 更新个人资料（别名、头像）
+const updateProfile = async (event) => {
+  try {
+    const { username, nickname, avatar } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+    const updateData = {};
+    if (nickname !== undefined) updateData.nickname = nickname;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    const res = await db
+      .collection("users")
+      .where({ username })
+      .update({ data: updateData });
+
+    if (res.stats.updated === 0) {
+      return { success: false, errMsg: "用户不存在" };
+    }
+    return { success: true, data: { nickname, avatar } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "更新资料失败" };
+  }
+};
+
+// 修改密码
+const changePassword = async (event) => {
+  try {
+    const { username, oldPassword, newPassword } = event;
+    if (!username || !oldPassword || !newPassword) {
+      return { success: false, errMsg: "参数不完整" };
+    }
+    // 验证原密码
+    const userRes = await db
+      .collection("users")
+      .where({ username, password: oldPassword })
+      .get();
+    if (userRes.data.length === 0) {
+      return { success: false, errMsg: "原密码错误" };
+    }
+    // 更新密码
+    await db
+      .collection("users")
+      .where({ username })
+      .update({ data: { password: newPassword } });
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "修改密码失败" };
+  }
+};
+
+// 获取用户列表（仅管理员）
+const getUsers = async (event) => {
+  try {
+    const { operatorUsername, keyword } = event;
+    // 校验操作者是否为管理员
+    const operatorRes = await db
+      .collection("users")
+      .where({ username: operatorUsername })
+      .get();
+    if (operatorRes.data.length === 0 || operatorRes.data[0].role !== "admin") {
+      return { success: false, errMsg: "无权限操作" };
+    }
+
+    let query = db.collection("users");
+    if (keyword) {
+      query = query.where(
+        _.or([
+          { username: db.RegExp({ regexp: keyword, options: "i" }) },
+          { nickname: db.RegExp({ regexp: keyword, options: "i" }) },
+        ])
+      );
+    }
+    const countRes = await query.count();
+    const res = await query
+      .orderBy("createTime", "desc")
+      .field({ username: true, nickname: true, avatar: true, role: true, createTime: true })
+      .get();
+    return { success: true, data: { list: res.data, total: countRes.total } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "获取用户列表失败" };
+  }
+};
+
+// 删除用户（仅管理员）
+const deleteUser = async (event) => {
+  try {
+    const { operatorUsername, targetUsername } = event;
+    // 校验操作者是否为管理员
+    const operatorRes = await db
+      .collection("users")
+      .where({ username: operatorUsername })
+      .get();
+    if (operatorRes.data.length === 0 || operatorRes.data[0].role !== "admin") {
+      return { success: false, errMsg: "无权限操作" };
+    }
+    // 不能删除管理员
+    const targetRes = await db
+      .collection("users")
+      .where({ username: targetUsername })
+      .get();
+    if (targetRes.data.length === 0) {
+      return { success: false, errMsg: "目标用户不存在" };
+    }
+    if (targetRes.data[0].role === "admin") {
+      return { success: false, errMsg: "不能删除管理员账号" };
+    }
+    // 删除用户头像（如果有）
+    if (targetRes.data[0].avatar) {
+      await cloud.deleteFile({ fileList: [targetRes.data[0].avatar] });
+    }
+    // 删除用户
+    await db.collection("users").where({ username: targetUsername }).remove();
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "删除用户失败" };
   }
 };
 
@@ -216,6 +349,15 @@ exports.main = async (event, context) => {
       return await register(event);
     case "login":
       return await login(event);
+    // 用户管理模块
+    case "updateProfile":
+      return await updateProfile(event);
+    case "changePassword":
+      return await changePassword(event);
+    case "getUsers":
+      return await getUsers(event);
+    case "deleteUser":
+      return await deleteUser(event);
     // 菜品模块
     case "addDish":
       return await addDish(event);

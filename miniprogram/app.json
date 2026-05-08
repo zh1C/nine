@@ -5,7 +5,9 @@
     "pages/dishes/dishes",
     "pages/dishEdit/dishEdit",
     "pages/calculate/calculate",
-    "pages/result/result"
+    "pages/result/result",
+    "pages/profile/profile",
+    "pages/userManage/userManage"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",

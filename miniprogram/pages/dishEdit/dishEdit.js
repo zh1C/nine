@@ -12,6 +12,21 @@ Page({
   },
 
   onLoad(options) {
+    // 权限校验：仅管理员可编辑菜品
+    const app = getApp();
+    const userInfo = app.globalData.userInfo;
+    if (!userInfo || userInfo.role !== "admin") {
+      wx.showModal({
+        title: "无权限",
+        content: "仅管理员可以编辑菜品",
+        showCancel: false,
+        success: () => {
+          wx.navigateBack();
+        },
+      });
+      return;
+    }
+
     if (options.id) {
       this.setData({ dishId: options.id, isEdit: true });
       wx.setNavigationBarTitle({ title: "编辑菜品" });
