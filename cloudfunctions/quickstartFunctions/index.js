@@ -90,18 +90,26 @@ const updateProfile = async (event) => {
     if (!username) {
       return { success: false, errMsg: "用户名不能为空" };
     }
+    // 先确认用户存在
+    const userRes = await db
+      .collection("users")
+      .where({ username })
+      .get();
+    if (userRes.data.length === 0) {
+      return { success: false, errMsg: "用户不存在" };
+    }
+
     const updateData = {};
     if (nickname !== undefined) updateData.nickname = nickname;
     if (avatar !== undefined) updateData.avatar = avatar;
 
-    const res = await db
-      .collection("users")
-      .where({ username })
-      .update({ data: updateData });
-
-    if (res.stats.updated === 0) {
-      return { success: false, errMsg: "用户不存在" };
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .collection("users")
+        .where({ username })
+        .update({ data: updateData });
     }
+
     return { success: true, data: { nickname, avatar } };
   } catch (e) {
     return { success: false, errMsg: e.message || "更新资料失败" };
