@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "dish-picker": "/components/dishPicker/dishPicker"
+  },
+  "navigationBarTitleText": "生成配料比"
+}

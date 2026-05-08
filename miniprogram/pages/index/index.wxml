@@ -1,0 +1,26 @@
+<!--pages/index/index.wxml-->
+<view class="index-page">
+  <view class="header">
+    <view class="header-left">
+      <text class="header-title">幼儿园配料计算</text>
+      <text class="header-user">欢迎，{{userInfo.username}}</text>
+    </view>
+    <view class="header-right" bindtap="handleLogout">
+      <text class="logout-text">退出</text>
+    </view>
+  </view>
+
+  <view class="menu-grid">
+    <view class="menu-item" bindtap="navigateTo" data-page="/pages/dishes/dishes">
+      <view class="menu-icon">🥘</view>
+      <text class="menu-title">菜品管理</text>
+      <text class="menu-desc">录入和管理菜品配料</text>
+    </view>
+
+    <view class="menu-item" bindtap="navigateTo" data-page="/pages/calculate/calculate">
+      <view class="menu-icon">📊</view>
+      <text class="menu-title">生成配料</text>
+      <text class="menu-desc">计算配料用量</text>
+    </view>
+  </view>
+</view>

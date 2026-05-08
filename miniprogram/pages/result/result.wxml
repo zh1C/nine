@@ -1,0 +1,65 @@
+<!--pages/result/result.wxml-->
+<view class="result-page">
+  <!-- 结果卡片 -->
+  <view class="result-card">
+    <view class="result-header">
+      <text class="garden-name">🏫 {{gardenName}}</text>
+      <text class="result-date">📅 {{date}}</text>
+    </view>
+
+    <view class="result-section">
+      <view class="section-title">📋 配料汇总</view>
+      <view class="table">
+        <view class="table-header">
+          <text class="th th-name">配料名称</text>
+          <text class="th th-amount">总量</text>
+          <text class="th th-unit">单位</text>
+        </view>
+        <view wx:for="{{result}}" wx:key="name" class="table-row {{index % 2 === 0 ? 'even' : ''}}">
+          <text class="td td-name">{{item.name}}</text>
+          <text class="td td-amount">{{item.total}}</text>
+          <text class="td td-unit">{{item.unit}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="result-section">
+      <view class="section-title">🍽️ 菜品明细</view>
+      <view wx:for="{{items}}" wx:key="dishId" class="item-row">
+        <text class="item-name">· {{item.dishName}}</text>
+        <text class="item-quantity">{{item.quantity}} kg</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成的图片预览 -->
+  <view wx:if="{{tempImagePath}}" class="image-preview" bindtap="previewImage">
+    <image class="result-image" src="{{tempImagePath}}" mode="widthFix" />
+    <text class="preview-tip">点击预览大图</text>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <button class="action-btn generate-btn" bindtap="generateImage" loading="{{generating}}">
+      生成图片
+    </button>
+    <button wx:if="{{tempImagePath}}" class="action-btn save-album-btn" bindtap="saveToAlbum">
+      保存到相册
+    </button>
+    <button class="action-btn save-record-btn" bindtap="saveRecord" loading="{{saving}}">
+      保存记录
+    </button>
+  </view>
+</view>
+
+<!-- Canvas 用于生成图片 (新版 Canvas 2D) -->
+<canvas
+  type="2d"
+  id="resultCanvas"
+  style="position:fixed;left:-9999px;top:-9999px;width:600px;height:800px;"
+/>
+<!-- 旧版Canvas降级 -->
+<canvas
+  canvas-id="resultCanvasLegacy"
+  style="position:fixed;left:-9999px;top:-9999px;width:600px;height:800px;"
+/>

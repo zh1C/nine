@@ -1,0 +1,82 @@
+/* pages/index/index.wxss */
+.index-page {
+  min-height: 100vh;
+  padding: 0 30rpx 30rpx;
+  background: #f5f5f5;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 40rpx 10rpx 30rpx;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.header-user {
+  font-size: 26rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.header-right {
+  padding: 12rpx 24rpx;
+  background: #f0f0f0;
+  border-radius: 30rpx;
+}
+
+.logout-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.menu-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 30rpx;
+}
+
+.menu-item {
+  width: 48%;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 40rpx 30rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.menu-item:active {
+  transform: scale(0.96);
+}
+
+.menu-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.menu-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10rpx;
+}
+
+.menu-desc {
+  font-size: 24rpx;
+  color: #999;
+}

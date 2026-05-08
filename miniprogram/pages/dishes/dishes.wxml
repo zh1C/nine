@@ -1,0 +1,55 @@
+<!--pages/dishes/dishes.wxml-->
+<view class="dishes-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索菜品..."
+        value="{{keyword}}"
+        bindinput="onInputSearch"
+        bindconfirm="handleSearch"
+      />
+      <text wx:if="{{keyword}}" class="clear-icon" bindtap="clearSearch">✕</text>
+    </view>
+    <view class="search-btn" bindtap="handleSearch">搜索</view>
+  </view>
+
+  <!-- 菜品列表 -->
+  <view class="dish-list">
+    <view wx:if="{{dishes.length === 0 && !loading}}" class="empty-tip">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无菜品，点击右上角添加</text>
+    </view>
+
+    <view wx:for="{{dishes}}" wx:key="_id" class="dish-card">
+      <view class="dish-info" bindtap="goEditDish" data-id="{{item._id}}">
+        <image
+          wx:if="{{item.imageFileID}}"
+          class="dish-image"
+          src="{{item.imageFileID}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="dish-image-placeholder">🍽️</view>
+        <view class="dish-detail">
+          <text class="dish-name">{{item.name}}</text>
+          <text class="dish-ingredients">
+            配料：{{item.ingredients.length}}种
+          </text>
+        </view>
+      </view>
+      <view class="dish-actions">
+        <view class="action-btn edit-btn" bindtap="goEditDish" data-id="{{item._id}}">编辑</view>
+        <view class="action-btn delete-btn" bindtap="deleteDish" data-id="{{item._id}}" data-image="{{item.imageFileID}}">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
+  <view wx:if="{{!hasMore && dishes.length > 0}}" class="loading-tip">没有更多了</view>
+
+  <!-- 添加按钮 -->
+  <view class="fab-btn" bindtap="goAddDish">+</view>
+</view>

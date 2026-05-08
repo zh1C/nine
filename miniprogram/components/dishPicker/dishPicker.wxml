@@ -1,0 +1,53 @@
+<!--components/dishPicker/dishPicker.wxml-->
+<view wx:if="{{show}}" class="picker-mask" bindtap="handleClose">
+  <view class="picker-container" catchtap="preventBubble">
+    <view class="picker-header">
+      <text class="picker-title">选择菜品</text>
+      <text class="picker-close" bindtap="handleClose">✕</text>
+    </view>
+
+    <view class="picker-search">
+      <input
+        class="picker-search-input"
+        placeholder="🔍 搜索菜品名..."
+        value="{{keyword}}"
+        bindinput="onInputSearch"
+        bindconfirm="handleSearch"
+      />
+    </view>
+
+    <scroll-view class="picker-list" scroll-y>
+      <view wx:if="{{loading}}" class="picker-loading">加载中...</view>
+      <view wx:elif="{{dishes.length === 0}}" class="picker-empty">暂无菜品</view>
+      <view
+        wx:for="{{dishes}}"
+        wx:key="_id"
+        class="picker-item {{checkedIds.indexOf(item._id) > -1 ? 'checked' : ''}}"
+        data-id="{{item._id}}"
+        bindtap="toggleCheck"
+      >
+        <view class="picker-checkbox">
+          <text wx:if="{{checkedIds.indexOf(item._id) > -1}}">☑</text>
+          <text wx:else>☐</text>
+        </view>
+        <image
+          wx:if="{{item.imageFileID}}"
+          class="picker-item-image"
+          src="{{item.imageFileID}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="picker-item-placeholder">🍽️</view>
+        <view class="picker-item-info">
+          <text class="picker-item-name">{{item.name}}</text>
+          <text class="picker-item-count">{{item.ingredients.length}}种配料</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="picker-footer">
+      <button class="picker-confirm-btn" bindtap="handleConfirm">
+        确认选择 ({{checkedIds.length}})
+      </button>
+    </view>
+  </view>
+</view>

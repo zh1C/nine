@@ -1,0 +1,64 @@
+<!--pages/calculate/calculate.wxml-->
+<view class="calculate-page">
+  <!-- 园区名称 -->
+  <view class="card">
+    <view class="section-title">🏫 园区名称</view>
+    <input
+      class="garden-input"
+      placeholder="请输入幼儿园名称"
+      value="{{gardenName}}"
+      bindinput="onInputGardenName"
+    />
+  </view>
+
+  <!-- 已选菜品 -->
+  <view class="card">
+    <view class="section-title">🥘 已选菜品</view>
+
+    <view wx:if="{{selectedDishes.length === 0}}" class="empty-dishes">
+      <text class="empty-text">还没有选择菜品</text>
+    </view>
+
+    <view wx:for="{{selectedDishes}}" wx:key="_id" class="dish-row">
+      <view class="dish-row-info">
+        <image
+          wx:if="{{item.imageFileID}}"
+          class="dish-row-image"
+          src="{{item.imageFileID}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="dish-row-placeholder">🍽️</view>
+        <text class="dish-row-name">{{item.name}}</text>
+      </view>
+      <view class="dish-row-quantity">
+        <input
+          class="quantity-input"
+          placeholder="量"
+          type="digit"
+          value="{{item.quantity}}"
+          data-idx="{{index}}"
+          bindinput="onInputQuantity"
+        />
+        <text class="quantity-unit">kg</text>
+        <view class="dish-remove" data-idx="{{index}}" bindtap="removeDish">✕</view>
+      </view>
+    </view>
+
+    <view class="add-dish-btn" bindtap="showDishPicker">
+      <text>+ 添加菜品（可搜索）</text>
+    </view>
+  </view>
+
+  <!-- 计算按钮 -->
+  <button class="calculate-btn" bindtap="handleCalculate">
+    开始计算 →
+  </button>
+</view>
+
+<!-- 菜品选择器 -->
+<dish-picker
+  show="{{showPicker}}"
+  selectedIds="{{selectedIds}}"
+  bind:confirm="onPickerConfirm"
+  bind:close="onPickerClose"
+/>

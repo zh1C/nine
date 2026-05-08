@@ -1,0 +1,80 @@
+<!--pages/dishEdit/dishEdit.wxml-->
+<view class="dish-edit-page">
+  <!-- 菜品图片 -->
+  <view class="card">
+    <view class="section-title">菜品图片</view>
+    <view class="image-upload" bindtap="chooseImage">
+      <image
+        wx:if="{{imageTempPath || imageFileID}}"
+        class="preview-image"
+        src="{{imageTempPath || imageFileID}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="upload-placeholder">
+        <text class="upload-icon">📷</text>
+        <text class="upload-text">点击上传图片</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 菜品名称 -->
+  <view class="card">
+    <view class="section-title">菜品名称</view>
+    <input
+      class="name-input"
+      placeholder="请输入菜品名称"
+      value="{{name}}"
+      bindinput="onInputName"
+    />
+  </view>
+
+  <!-- 配料比例 -->
+  <view class="card">
+    <view class="section-title">配料比例</view>
+    <view class="tip-text">配料比例表示：每1单位成品中各配料的用量</view>
+
+    <view class="ingredient-header">
+      <text class="col-name">配料名</text>
+      <text class="col-ratio">比例</text>
+      <text class="col-unit">单位</text>
+      <text class="col-action">操作</text>
+    </view>
+
+    <view wx:for="{{ingredients}}" wx:key="index" class="ingredient-row">
+      <input
+        class="ingredient-name"
+        placeholder="名称"
+        value="{{item.name}}"
+        data-idx="{{index}}"
+        bindinput="onInputIngredientName"
+      />
+      <input
+        class="ingredient-ratio"
+        placeholder="比例"
+        type="digit"
+        value="{{item.ratio}}"
+        data-idx="{{index}}"
+        bindinput="onInputIngredientRatio"
+      />
+      <picker
+        class="ingredient-unit"
+        range="{{unitOptions}}"
+        value="{{unitOptions.indexOf(item.unit)}}"
+        data-idx="{{index}}"
+        bindchange="onPickerChange"
+      >
+        <view class="unit-picker">{{item.unit}} ▼</view>
+      </picker>
+      <view class="remove-btn" data-idx="{{index}}" bindtap="removeIngredient">✕</view>
+    </view>
+
+    <view class="add-ingredient-btn" bindtap="addIngredient">
+      <text>+ 添加配料</text>
+    </view>
+  </view>
+
+  <!-- 保存按钮 -->
+  <button class="save-btn" bindtap="handleSave" loading="{{loading}}">
+    保存菜品
+  </button>
+</view>
