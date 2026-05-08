@@ -2,7 +2,7 @@
 <view class="login-page">
   <view class="login-header">
     <view class="logo">🍳</view>
-    <text class="title">幼儿园配料计算工具</text>
+    <text class="title">9号菜单</text>
     <text class="subtitle">{{isRegister ? '注册新账号' : '欢迎登录'}}</text>
   </view>
 

@@ -2,7 +2,7 @@
 <view class="index-page">
   <view class="header">
     <view class="header-left">
-      <text class="header-title">幼儿园配料计算</text>
+      <text class="header-title">9号菜单</text>
       <text class="header-user">欢迎，{{userInfo.username}}</text>
     </view>
     <view class="header-right" bindtap="handleLogout">
