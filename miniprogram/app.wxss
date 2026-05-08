@@ -34,7 +34,10 @@ button::after {
   border-radius: 8rpx;
   font-size: 32rpx;
   height: 88rpx;
-  line-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .btn-warn {
@@ -50,7 +53,10 @@ button::after {
   border-radius: 8rpx;
   font-size: 32rpx;
   height: 88rpx;
-  line-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .card {

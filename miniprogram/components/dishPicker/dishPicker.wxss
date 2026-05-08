@@ -130,13 +130,16 @@
 .picker-confirm-btn {
   width: 100%;
   height: 80rpx;
-  line-height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #4CAF50 !important;
   color: #fff !important;
   border-radius: 40rpx;
   font-size: 30rpx;
   font-weight: bold;
   border: none;
+  padding: 0;
 }
 
 .picker-confirm-btn::after {

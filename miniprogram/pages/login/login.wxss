@@ -62,7 +62,9 @@
 .submit-btn {
   width: 100%;
   height: 88rpx;
-  line-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #4CAF50 !important;
   color: #fff !important;
   border-radius: 44rpx;
@@ -70,6 +72,7 @@
   font-weight: bold;
   margin-top: 40rpx;
   border: none;
+  padding: 0;
 }
 
 .submit-btn::after {

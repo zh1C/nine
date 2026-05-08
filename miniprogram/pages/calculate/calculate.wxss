@@ -119,7 +119,9 @@
 .calculate-btn {
   width: 100%;
   height: 88rpx;
-  line-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #FF9800 !important;
   color: #fff !important;
   border-radius: 44rpx;
@@ -127,6 +129,7 @@
   font-weight: bold;
   margin-top: 20rpx;
   border: none;
+  padding: 0;
 }
 
 .calculate-btn::after {
