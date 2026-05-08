@@ -10,7 +10,9 @@ Page({
     onLoad() { },
 
     onInputUsername(e) {
-        this.setData({ username: e.detail.value });
+        // 只允许字母、数字和下划线
+        const value = e.detail.value.replace(/[^a-zA-Z0-9_]/g, "");
+        this.setData({ username: value });
     },
 
     onInputPassword(e) {
@@ -25,6 +27,11 @@ Page({
         const { username, password, isRegister } = this.data;
         if (!username.trim() || !password.trim()) {
             wx.showToast({ title: "请输入用户名和密码", icon: "none" });
+            return;
+        }
+        // 注册时校验用户名格式
+        if (isRegister && !/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+            wx.showToast({ title: "用户名只能包含字母、数字和下划线", icon: "none" });
             return;
         }
 

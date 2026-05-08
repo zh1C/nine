@@ -14,6 +14,38 @@
 
 .header-left {
   display: flex;
+  align-items: center;
+}
+
+.header-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.header-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+
+.header-avatar-default {
+  width: 100%;
+  height: 100%;
+  background: #4CAF50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.header-info {
+  display: flex;
   flex-direction: column;
 }
 

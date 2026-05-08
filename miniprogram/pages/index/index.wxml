@@ -2,8 +2,16 @@
 <view class="index-page">
   <view class="header">
     <view class="header-left">
-      <text class="header-title">9号菜单</text>
-      <text class="header-user">欢迎，{{userInfo.nickname || userInfo.username}}</text>
+      <view class="header-avatar">
+        <image class="header-avatar-img" wx:if="{{userInfo.avatar}}" src="{{userInfo.avatar}}" mode="aspectFill"></image>
+        <view class="header-avatar-default" wx:else>
+          <text>{{userInfo.nickname ? userInfo.nickname[0] : (userInfo.username ? userInfo.username[0] : '?')}}</text>
+        </view>
+      </view>
+      <view class="header-info">
+        <text class="header-title">9号菜单</text>
+        <text class="header-user">欢迎，{{userInfo.nickname || userInfo.username}}</text>
+      </view>
     </view>
     <view class="header-right" bindtap="handleLogout">
       <text class="logout-text">退出</text>
