@@ -15,13 +15,12 @@ Component({
     dishes: [],
     keyword: "",
     loading: false,
-    checkedIds: [],
+    checkedCount: 0,
   },
 
   observers: {
     show(val) {
       if (val) {
-        this.setData({ checkedIds: [...this.properties.selectedIds] });
         this.loadDishes();
       }
     },
@@ -49,7 +48,16 @@ Component({
           },
         });
         if (res.result.success) {
-          this.setData({ dishes: res.result.data.list });
+          const selectedIds = this.properties.selectedIds || [];
+          // 给每个 dish 添加 checked 字段
+          const dishes = res.result.data.list.map((item) => ({
+            ...item,
+            checked: selectedIds.indexOf(item._id) > -1,
+          }));
+          this.setData({
+            dishes,
+            checkedCount: dishes.filter((d) => d.checked).length,
+          });
         }
       } catch (e) {
         console.error(e);
@@ -59,21 +67,18 @@ Component({
     },
 
     toggleCheck(e) {
-      const id = e.currentTarget.dataset.id;
-      const checkedIds = [...this.data.checkedIds];
-      const index = checkedIds.indexOf(id);
-      if (index > -1) {
-        checkedIds.splice(index, 1);
-      } else {
-        checkedIds.push(id);
-      }
-      this.setData({ checkedIds });
+      const idx = e.currentTarget.dataset.idx;
+      const key = `dishes[${idx}].checked`;
+      const checked = !this.data.dishes[idx].checked;
+      const checkedCount = this.data.checkedCount + (checked ? 1 : -1);
+      this.setData({
+        [key]: checked,
+        checkedCount,
+      });
     },
 
     handleConfirm() {
-      const selectedDishes = this.data.dishes.filter(
-        (d) => this.data.checkedIds.includes(d._id)
-      );
+      const selectedDishes = this.data.dishes.filter((d) => d.checked);
       this.triggerEvent("confirm", { dishes: selectedDishes });
     },
 

@@ -22,13 +22,12 @@
       <view
         wx:for="{{dishes}}"
         wx:key="_id"
-        class="picker-item {{checkedIds.indexOf(item._id) > -1 ? 'checked' : ''}}"
-        data-id="{{item._id}}"
+        class="picker-item {{item.checked ? 'checked' : ''}}"
+        data-idx="{{index}}"
         bindtap="toggleCheck"
       >
-        <view class="picker-checkbox">
-          <text wx:if="{{checkedIds.indexOf(item._id) > -1}}">☑</text>
-          <text wx:else>☐</text>
+        <view class="custom-checkbox {{item.checked ? 'checked' : ''}}">
+          <text wx:if="{{item.checked}}" class="check-icon">✓</text>
         </view>
         <image
           wx:if="{{item.imageFileID}}"
@@ -46,7 +45,7 @@
 
     <view class="picker-footer">
       <button class="picker-confirm-btn" bindtap="handleConfirm">
-        确认选择 ({{checkedIds.length}})
+        确认选择 ({{checkedCount}})
       </button>
     </view>
   </view>
