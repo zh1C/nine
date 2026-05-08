@@ -55,7 +55,7 @@
 .picker-list {
   flex: 1;
   max-height: 50vh;
-  padding: 0 30rpx;
+  padding: 0;
 }
 
 .picker-loading,
@@ -69,16 +69,16 @@
 .picker-item {
   display: flex;
   align-items: center;
-  padding: 20rpx 0;
+  margin: 0;
+  padding: 20rpx 30rpx 20rpx 24rpx;
   border-bottom: 1rpx solid #f5f5f5;
-  transition: all 0.2s;
+  border-left: 6rpx solid transparent;
+  transition: background-color 0.2s;
 }
 
 .picker-item.checked {
   background: #E8F5E9;
-  margin: 0 -30rpx;
-  padding: 20rpx 30rpx 20rpx 24rpx;
-  border-left: 6rpx solid #4CAF50;
+  border-left-color: #4CAF50;
   border-bottom: 1rpx solid #C8E6C9;
 }
 
