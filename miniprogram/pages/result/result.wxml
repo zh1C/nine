@@ -24,10 +24,18 @@
     </view>
 
     <view class="result-section">
-      <view class="section-title">🍽️ 菜品明细</view>
-      <view wx:for="{{items}}" wx:key="dishId" class="item-row">
-        <text class="item-name">· {{item.dishName}}</text>
-        <text class="item-quantity">{{item.quantity}} kg</text>
+      <view class="section-title">🍲 菜品明细</view>
+      <view class="table">
+        <view class="table-header">
+          <text class="th th-name">菜品名称</text>
+          <text class="th th-amount">需求量</text>
+          <text class="th th-unit">单位</text>
+        </view>
+        <view wx:for="{{items}}" wx:key="dishId" class="table-row {{index % 2 === 0 ? 'even' : ''}}">
+          <text class="td td-name">{{item.dishName}}</text>
+          <text class="td td-amount">{{item.quantity}}</text>
+          <text class="td td-unit">kg</text>
+        </view>
       </view>
     </view>
   </view>

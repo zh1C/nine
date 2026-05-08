@@ -134,15 +134,34 @@ Page({
           y += sectionGap;
           ctx.fillStyle = "#333333";
           ctx.font = "bold 20px sans-serif";
-          ctx.fillText("🍽️ 菜品明细", padding, y);
+          ctx.fillText("🍲 菜品明细", padding, y);
           y += 35;
 
+          // 菜品明细表头
+          ctx.fillStyle = "#f5f5f5";
+          ctx.fillRect(padding, y, canvasWidth - padding * 2, tableHeaderHeight);
+          ctx.fillStyle = "#666666";
+          ctx.font = "14px sans-serif";
+          ctx.fillText("菜品名称", padding + 16, y + 36);
+          ctx.fillText("需求量", 320, y + 36);
+          ctx.fillText("单位", 460, y + 36);
+          y += tableHeaderHeight;
+
+          // 菜品数据行
           ctx.font = "15px sans-serif";
-          items.forEach((item) => {
+          items.forEach((item, index) => {
+            if (index % 2 === 0) {
+              ctx.fillStyle = "#fafafa";
+              ctx.fillRect(padding, y, canvasWidth - padding * 2, rowHeight);
+            }
             ctx.fillStyle = "#333333";
-            ctx.fillText(`· ${item.dishName}`, padding + 16, y + 28);
+            ctx.fillText(item.dishName, padding + 16, y + 32);
             ctx.fillStyle = "#4CAF50";
-            ctx.fillText(`${item.quantity} kg`, 400, y + 28);
+            ctx.font = "bold 15px sans-serif";
+            ctx.fillText(String(item.quantity), 320, y + 32);
+            ctx.fillStyle = "#666666";
+            ctx.font = "15px sans-serif";
+            ctx.fillText("kg", 460, y + 32);
             y += rowHeight;
           });
 
@@ -243,12 +262,29 @@ Page({
     ctx.fillText("菜品明细", padding, y);
     y += 35;
 
+    // 菜品明细表头
+    ctx.setFillStyle("#f5f5f5");
+    ctx.fillRect(padding, y, canvasWidth - padding * 2, tableHeaderHeight);
+    ctx.setFillStyle("#666666");
+    ctx.setFontSize(14);
+    ctx.fillText("菜品名称", padding + 16, y + 36);
+    ctx.fillText("需求量", 320, y + 36);
+    ctx.fillText("单位", 460, y + 36);
+    y += tableHeaderHeight;
+
+    // 菜品数据行
     ctx.setFontSize(15);
-    items.forEach((item) => {
+    items.forEach((item, index) => {
+      if (index % 2 === 0) {
+        ctx.setFillStyle("#fafafa");
+        ctx.fillRect(padding, y, canvasWidth - padding * 2, rowHeight);
+      }
       ctx.setFillStyle("#333333");
-      ctx.fillText(`· ${item.dishName}`, padding + 16, y + 28);
+      ctx.fillText(item.dishName, padding + 16, y + 32);
       ctx.setFillStyle("#4CAF50");
-      ctx.fillText(`${item.quantity} kg`, 400, y + 28);
+      ctx.fillText(String(item.quantity), 320, y + 32);
+      ctx.setFillStyle("#666666");
+      ctx.fillText("kg", 460, y + 32);
       y += rowHeight;
     });
 
