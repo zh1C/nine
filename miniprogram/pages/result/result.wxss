@@ -202,3 +202,8 @@
   background-color: #FF9800 !important;
   color: #fff !important;
 }
+
+.save-record-btn.saved {
+  background-color: #a5d6a7 !important;
+  color: #fff !important;
+}

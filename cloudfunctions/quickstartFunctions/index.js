@@ -459,11 +459,12 @@ const deleteGarden = async (event) => {
 // 保存计算记录
 const saveRecord = async (event) => {
   try {
-    const { selectedDates, tables, summary, gardens } = event;
+    const { selectedDates, tables, summary, gardens, username } = event;
     const wxContext = cloud.getWXContext();
     const res = await db.collection("records").add({
       data: {
         _openid: wxContext.OPENID,
+        username: username || "",
         selectedDates: selectedDates || [],
         tables: tables || [],
         summary: summary || {},
@@ -480,21 +481,63 @@ const saveRecord = async (event) => {
 // 获取历史记录
 const getRecords = async (event) => {
   try {
-    const { page = 1, pageSize = 20 } = event;
-    const wxContext = cloud.getWXContext();
-    const query = db.collection("records").where({
-      _openid: wxContext.OPENID,
-    });
+    const { username, keyword, page = 1, pageSize = 20 } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+    let whereCondition = { username };
+    if (keyword) {
+      whereCondition.selectedDates = _.elemMatch(
+        db.RegExp({ regexp: keyword, options: "i" })
+      );
+    }
+    const query = db.collection("records").where(whereCondition);
     const countRes = await query.count();
     const total = countRes.total;
     const res = await query
       .orderBy("createTime", "desc")
       .skip((page - 1) * pageSize)
       .limit(pageSize)
+      .field({ _id: true, selectedDates: true, gardens: true, createTime: true })
       .get();
     return { success: true, data: { list: res.data, total } };
   } catch (e) {
     return { success: false, errMsg: e.message || "获取记录失败" };
+  }
+};
+
+// 获取记录详情
+const getRecordDetail = async (event) => {
+  try {
+    const { recordId, username } = event;
+    if (!recordId || !username) {
+      return { success: false, errMsg: "参数不完整" };
+    }
+    const record = await db.collection("records").doc(recordId).get();
+    if (record.data.username !== username) {
+      return { success: false, errMsg: "无权查看此记录" };
+    }
+    return { success: true, data: record.data };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "获取记录详情失败" };
+  }
+};
+
+// 删除记录
+const deleteRecord = async (event) => {
+  try {
+    const { recordId, username } = event;
+    if (!recordId || !username) {
+      return { success: false, errMsg: "参数不完整" };
+    }
+    const record = await db.collection("records").doc(recordId).get();
+    if (record.data.username !== username) {
+      return { success: false, errMsg: "无权删除此记录" };
+    }
+    await db.collection("records").doc(recordId).remove();
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "删除记录失败" };
   }
 };
 
@@ -543,6 +586,10 @@ exports.main = async (event, context) => {
       return await saveRecord(event);
     case "getRecords":
       return await getRecords(event);
+    case "getRecordDetail":
+      return await getRecordDetail(event);
+    case "deleteRecord":
+      return await deleteRecord(event);
     default:
       return { success: false, errMsg: "未知的操作类型" };
   }

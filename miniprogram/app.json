@@ -6,6 +6,7 @@
     "pages/dishEdit/dishEdit",
     "pages/calculate/calculate",
     "pages/result/result",
+    "pages/history/history",
     "pages/profile/profile",
     "pages/userManage/userManage",
     "pages/gardenManage/gardenManage"

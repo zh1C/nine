@@ -6,10 +6,12 @@ Page({
     gardens: [], // 园区列表
     selectedDates: [],
     saving: false,
+    saved: false, // 是否已保存到云端
+    fromHistory: false, // 是否从历史记录查看
     generatingIdx: -1, // 当前正在生成图片的表格索引, -1=无
   },
 
-  onLoad() {
+  onLoad(options) {
     const app = getApp();
     const data = app.globalData.calculateResult;
     if (!data) {
@@ -23,6 +25,7 @@ Page({
       summary: data.summary,
       gardens: data.gardens,
       selectedDates: data.selectedDates,
+      fromHistory: options.from === "history",
     });
 
     // 保存原始数据用于存云数据库
@@ -412,10 +415,14 @@ Page({
     try {
       const { tables, summary, gardens, selectedDates } = this.data;
 
+      const app = getApp();
+      const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
+
       const res = await wx.cloud.callFunction({
         name: "quickstartFunctions",
         data: {
           type: "saveRecord",
+          username,
           selectedDates,
           tables,
           summary,
@@ -424,6 +431,7 @@ Page({
       });
 
       if (res.result.success) {
+        this.setData({ saved: true });
         wx.showToast({ title: "保存成功", icon: "success" });
       } else {
         wx.showToast({ title: res.result.errMsg || "保存失败", icon: "none" });

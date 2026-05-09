@@ -1,0 +1,67 @@
+<!--pages/history/history.wxml-->
+<view class="history-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索日期（如 2026-05）"
+        value="{{keyword}}"
+        bindinput="onKeywordInput"
+        bindconfirm="doSearch"
+        confirm-type="search"
+      />
+      <view wx:if="{{keyword}}" class="search-clear" bindtap="clearKeyword">✕</view>
+    </view>
+  </view>
+
+  <!-- 记录列表 -->
+  <view class="record-list" wx:if="{{records.length > 0}}">
+    <view class="record-card" wx:for="{{records}}" wx:key="_id">
+      <view class="record-card-body" bindtap="viewRecord" data-id="{{item._id}}">
+        <view class="record-dates">
+          <text class="record-dates-icon">📅</text>
+          <text class="record-dates-text">{{item.dateRange}}</text>
+        </view>
+        <view class="record-gardens">
+          <text class="record-gardens-icon">🏢</text>
+          <text class="record-gardens-text">{{item.gardenNames}}</text>
+        </view>
+        <view class="record-time">
+          <text class="record-time-icon">⏰</text>
+          <text class="record-time-text">{{item.createTimeStr}}</text>
+        </view>
+      </view>
+      <view class="record-card-actions">
+        <view class="record-action-btn view-btn" bindtap="viewRecord" data-id="{{item._id}}">
+          <text>查看</text>
+        </view>
+        <view class="record-action-btn delete-btn" bindtap="deleteRecord" data-id="{{item._id}}">
+          <text>删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && records.length === 0 && loaded}}">
+    <text class="empty-icon">📭</text>
+    <text class="empty-text">暂无历史记录</text>
+    <text class="empty-hint">在结果页点击"保存记录到云端"即可保存</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="load-more" wx:if="{{records.length > 0}}">
+    <text wx:if="{{loading}}" class="load-more-text">加载中...</text>
+    <text wx:elif="{{noMore}}" class="load-more-text">— 已加载全部 —</text>
+    <view wx:else class="load-more-btn" bindtap="loadMore">
+      <text>加载更多</text>
+    </view>
+  </view>
+
+  <!-- 首次加载 -->
+  <view class="loading-state" wx:if="{{loading && records.length === 0}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+</view>

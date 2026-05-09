@@ -33,6 +33,13 @@
       <text class="menu-desc">计算配料用量</text>
     </view>
 
+    <!-- 所有用户：历史记录 -->
+    <view class="menu-item" bindtap="navigateTo" data-page="/pages/history/history">
+      <view class="menu-icon">📋</view>
+      <text class="menu-title">历史记录</text>
+      <text class="menu-desc">查看保存的配料记录</text>
+    </view>
+
     <!-- 管理员：园区管理 -->
     <view class="menu-item" wx:if="{{isAdmin}}" bindtap="navigateTo" data-page="/pages/gardenManage/gardenManage">
       <view class="menu-icon">🏢</view>

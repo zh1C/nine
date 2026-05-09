@@ -66,9 +66,9 @@
   </view>
 
   <!-- 底部操作按钮 -->
-  <view class="bottom-actions">
-    <button class="action-btn save-record-btn" bindtap="saveRecord" loading="{{saving}}">
-      📥 保存记录到云端
+  <view class="bottom-actions" wx:if="{{!fromHistory}}">
+    <button class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved}}">
+      {{saved ? '☁️ 已保存到云端' : '📥 保存记录到云端'}}
     </button>
   </view>
 </view>
