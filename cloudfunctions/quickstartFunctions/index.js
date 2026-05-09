@@ -424,6 +424,33 @@ const deleteGarden = async (event) => {
     if (res.stats.removed === 0) {
       return { success: false, errMsg: "园区不存在" };
     }
+    // 同步清理所有菜品中该园区的 ratios 数据（清理失败不影响删除结果）
+    try {
+      const gardenKey = String(gardenId);
+      const MAX_LIMIT = 100;
+      const countRes = await db.collection("dishes").count();
+      const total = countRes.total;
+      for (let i = 0; i < total; i += MAX_LIMIT) {
+        const dishes = await db
+          .collection("dishes")
+          .skip(i)
+          .limit(MAX_LIMIT)
+          .field({ _id: true, ratios: true })
+          .get();
+        const tasks = dishes.data
+          .filter((dish) => dish.ratios && dish.ratios[gardenKey] !== undefined)
+          .map((dish) =>
+            db.collection("dishes").doc(dish._id).update({
+              data: { [`ratios.${gardenKey}`]: _.remove() },
+            })
+          );
+        if (tasks.length > 0) {
+          await Promise.all(tasks);
+        }
+      }
+    } catch (cleanErr) {
+      console.error("清理菜品关联 ratios 数据失败:", cleanErr);
+    }
     return { success: true };
   } catch (e) {
     return { success: false, errMsg: e.message || "删除园区失败" };
