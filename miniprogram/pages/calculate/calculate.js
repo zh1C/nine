@@ -106,6 +106,25 @@ Page({
     this.refreshCalendarSelection();
   },
 
+  // 判断当前是否有已选日期或已配置菜品
+  hasExistingSelection() {
+    const { selectedDates, dailyDishes } = this.data;
+    if (selectedDates.length > 0) return true;
+    return Object.keys(dailyDishes).some(key => dailyDishes[key] && dailyDishes[key].length > 0);
+  },
+
+  // 应用快捷选择：更新日期并清理孤儿菜品数据
+  applyQuickSelect(dates) {
+    const dailyDishes = { ...this.data.dailyDishes };
+    Object.keys(dailyDishes).forEach(key => {
+      if (dates.indexOf(key) === -1) {
+        delete dailyDishes[key];
+      }
+    });
+    this.setData({ selectedDates: dates, currentDateIdx: 0, dailyDishes });
+    this.refreshCalendarSelection();
+  },
+
   // 快捷选择：本周剩余
   selectThisWeek() {
     const today = new Date();
@@ -117,8 +136,21 @@ Page({
       d.setDate(today.getDate() + i);
       dates.push(this.formatDate(d));
     }
-    this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
-    this.refreshCalendarSelection();
+    dates.sort();
+
+    if (this.hasExistingSelection()) {
+      wx.showModal({
+        title: '提示',
+        content: '将清除当前已选日期及菜品配置，确认？',
+        success: (res) => {
+          if (res.confirm) {
+            this.applyQuickSelect(dates);
+          }
+        },
+      });
+    } else {
+      this.applyQuickSelect(dates);
+    }
   },
 
   // 快捷选择：下周一至五
@@ -132,8 +164,21 @@ Page({
       d.setDate(today.getDate() + daysUntilNextMon + i);
       dates.push(this.formatDate(d));
     }
-    this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
-    this.refreshCalendarSelection();
+    dates.sort();
+
+    if (this.hasExistingSelection()) {
+      wx.showModal({
+        title: '提示',
+        content: '将清除当前已选日期及菜品配置，确认？',
+        success: (res) => {
+          if (res.confirm) {
+            this.applyQuickSelect(dates);
+          }
+        },
+      });
+    } else {
+      this.applyQuickSelect(dates);
+    }
   },
 
   formatDate(d) {

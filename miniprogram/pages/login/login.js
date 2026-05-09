@@ -70,7 +70,7 @@ Page({
                     wx.showToast({ title: "登录成功", icon: "success" });
                     setTimeout(() => {
                         wx.reLaunch({ url: "/pages/index/index" });
-                    }, 1000);
+                    }, 500);
                 }
             } else {
                 wx.showToast({ title: result.errMsg || "操作失败", icon: "none" });
