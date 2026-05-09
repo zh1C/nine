@@ -1,8 +1,8 @@
 <!--components/dishPicker/dishPicker.wxml-->
-<view wx:if="{{show}}" class="picker-mask" bindtap="handleClose">
-  <view class="picker-container" catchtap="preventBubble">
+<view class="picker-mask {{show ? 'show' : ''}}" wx:if="{{visible}}" bindtap="handleClose">
+  <view class="picker-container {{show ? 'slide-up' : 'slide-down'}}" catchtap="preventBubble">
     <view class="picker-header">
-      <text class="picker-title">选择菜品</text>
+      <text class="picker-title">添加菜品</text>
       <text class="picker-close" bindtap="handleClose">✕</text>
     </view>
 
@@ -18,17 +18,14 @@
 
     <scroll-view class="picker-list" scroll-y>
       <view wx:if="{{loading}}" class="picker-loading">加载中...</view>
-      <view wx:elif="{{dishes.length === 0}}" class="picker-empty">暂无菜品</view>
+      <view wx:elif="{{dishes.length === 0}}" class="picker-empty">暂无更多菜品</view>
       <view
         wx:for="{{dishes}}"
         wx:key="_id"
-        class="picker-item {{item.checked ? 'checked' : ''}}"
+        class="picker-item"
         data-idx="{{index}}"
-        bindtap="toggleCheck"
+        bindtap="handleAdd"
       >
-        <view class="custom-checkbox {{item.checked ? 'checked' : ''}}">
-          <text wx:if="{{item.checked}}" class="check-icon">✓</text>
-        </view>
         <image
           wx:if="{{item.imageFileID}}"
           class="picker-item-image"
@@ -40,13 +37,10 @@
           <text class="picker-item-name">{{item.name}}</text>
           <text class="picker-item-count">{{item.ingredients.length}}种配料</text>
         </view>
+        <view class="picker-add-btn">
+          <text class="add-icon">+</text>
+        </view>
       </view>
     </scroll-view>
-
-    <view class="picker-footer">
-      <button class="picker-confirm-btn" bindtap="handleConfirm">
-        确认选择 ({{checkedCount}})
-      </button>
-    </view>
   </view>
 </view>

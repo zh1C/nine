@@ -12,7 +12,7 @@ Page({
     currentDateIdx: 0, // 当前Tab选中的日期索引
     dailyDishes: {}, // { '2026-05-09': [{_id, name, imageFileID, ingredients, ratios}], ... }
     showPicker: false,
-    pickerSelectedIds: [],
+    pickerExcludeIds: [], // 当天已选菜品ID，传给picker用于过滤
 
     // 数据源
     allDishes: [],
@@ -34,21 +34,31 @@ Page({
 
   // ========== 日历逻辑 ==========
   generateCalendar() {
-    const { currentYear, currentMonth } = this.data;
+    const { currentYear, currentMonth, selectedDates } = this.data;
     const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
 
     const calendarDays = [];
     // 前置空白
     for (let i = 0; i < firstDay; i++) {
-      calendarDays.push({ day: "", date: "", empty: true });
+      calendarDays.push({ day: "", date: "", empty: true, selected: false });
     }
     // 日期
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      calendarDays.push({ day: d, date: dateStr, empty: false });
+      calendarDays.push({ day: d, date: dateStr, empty: false, selected: selectedDates.indexOf(dateStr) > -1 });
     }
     this.setData({ calendarDays });
+  },
+
+  // 刷新日历选中状态
+  refreshCalendarSelection() {
+    const { calendarDays, selectedDates } = this.data;
+    const updated = calendarDays.map((item) => {
+      if (item.empty) return item;
+      return { ...item, selected: selectedDates.indexOf(item.date) > -1 };
+    });
+    this.setData({ calendarDays: updated });
   },
 
   prevMonth() {
@@ -93,6 +103,7 @@ Page({
     if (selectedDates.length > 0 && this.data.currentDateIdx >= selectedDates.length) {
       this.setData({ currentDateIdx: selectedDates.length - 1 });
     }
+    this.refreshCalendarSelection();
   },
 
   // 快捷选择：本周剩余
@@ -107,6 +118,7 @@ Page({
       dates.push(this.formatDate(d));
     }
     this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
+    this.refreshCalendarSelection();
   },
 
   // 快捷选择：下周一至五
@@ -121,6 +133,7 @@ Page({
       dates.push(this.formatDate(d));
     }
     this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
+    this.refreshCalendarSelection();
   },
 
   formatDate(d) {
@@ -181,7 +194,7 @@ Page({
     const currentDishes = dailyDishes[currentDate] || [];
     this.setData({
       showPicker: true,
-      pickerSelectedIds: currentDishes.map((d) => d._id),
+      pickerExcludeIds: currentDishes.map((d) => d._id),
     });
   },
 
@@ -189,19 +202,26 @@ Page({
     this.setData({ showPicker: false });
   },
 
-  onPickerConfirm(e) {
-    const dishes = e.detail.dishes;
+  onPickerAdd(e) {
+    const dish = e.detail.dish;
     const { selectedDates, currentDateIdx, dailyDishes } = this.data;
     const currentDate = selectedDates[currentDateIdx];
+    const dishes = [...(dailyDishes[currentDate] || [])];
+    // 避免重复添加
+    if (dishes.some((d) => d._id === dish._id)) return;
+    dishes.push({
+      _id: dish._id,
+      name: dish.name,
+      imageFileID: dish.imageFileID || "",
+      ingredients: dish.ingredients || [],
+      ratios: dish.ratios || {},
+    });
     const updatedDailyDishes = { ...dailyDishes };
-    updatedDailyDishes[currentDate] = dishes.map((d) => ({
-      _id: d._id,
-      name: d.name,
-      imageFileID: d.imageFileID || "",
-      ingredients: d.ingredients || [],
-      ratios: d.ratios || {},
-    }));
-    this.setData({ dailyDishes: updatedDailyDishes, showPicker: false });
+    updatedDailyDishes[currentDate] = dishes;
+    this.setData({
+      dailyDishes: updatedDailyDishes,
+      pickerExcludeIds: dishes.map((d) => d._id),
+    });
   },
 
   removeDailyDish(e) {

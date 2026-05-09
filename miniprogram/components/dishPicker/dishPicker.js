@@ -5,7 +5,7 @@ Component({
       type: Boolean,
       value: false,
     },
-    selectedIds: {
+    excludeIds: {
       type: Array,
       value: [],
     },
@@ -15,13 +15,19 @@ Component({
     dishes: [],
     keyword: "",
     loading: false,
-    checkedCount: 0,
+    visible: false, // 控制动画显隐
   },
 
   observers: {
     show(val) {
       if (val) {
+        this.setData({ visible: true });
         this.loadDishes();
+      } else {
+        // 延迟隐藏，等动画结束
+        setTimeout(() => {
+          this.setData({ visible: false });
+        }, 200);
       }
     },
   },
@@ -29,6 +35,7 @@ Component({
   methods: {
     onInputSearch(e) {
       this.setData({ keyword: e.detail.value });
+      this.loadDishes();
     },
 
     handleSearch() {
@@ -44,20 +51,12 @@ Component({
             type: "getDishes",
             keyword: this.data.keyword,
             page: 1,
-            pageSize: 100,
+            pageSize: 200,
           },
         });
         if (res.result.success) {
-          const selectedIds = this.properties.selectedIds || [];
-          // 给每个 dish 添加 checked 字段
-          const dishes = res.result.data.list.map((item) => ({
-            ...item,
-            checked: selectedIds.indexOf(item._id) > -1,
-          }));
-          this.setData({
-            dishes,
-            checkedCount: dishes.filter((d) => d.checked).length,
-          });
+          this._allDishes = res.result.data.list;
+          this.filterDishes();
         }
       } catch (e) {
         console.error(e);
@@ -66,20 +65,22 @@ Component({
       }
     },
 
-    toggleCheck(e) {
-      const idx = e.currentTarget.dataset.idx;
-      const key = `dishes[${idx}].checked`;
-      const checked = !this.data.dishes[idx].checked;
-      const checkedCount = this.data.checkedCount + (checked ? 1 : -1);
-      this.setData({
-        [key]: checked,
-        checkedCount,
-      });
+    filterDishes() {
+      const excludeIds = this.properties.excludeIds || [];
+      const allDishes = this._allDishes || [];
+      const dishes = allDishes.filter((d) => excludeIds.indexOf(d._id) === -1);
+      this.setData({ dishes });
     },
 
-    handleConfirm() {
-      const selectedDishes = this.data.dishes.filter((d) => d.checked);
-      this.triggerEvent("confirm", { dishes: selectedDishes });
+    handleAdd(e) {
+      const idx = e.currentTarget.dataset.idx;
+      const dish = this.data.dishes[idx];
+      if (!dish) return;
+      // 触发 add 事件
+      this.triggerEvent("add", { dish });
+      // 从当前列表中移除该菜品（即时反馈）
+      const dishes = this.data.dishes.filter((_, i) => i !== idx);
+      this.setData({ dishes });
     },
 
     handleClose() {

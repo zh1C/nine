@@ -21,11 +21,11 @@
       <view
         wx:for="{{calendarDays}}"
         wx:key="date"
-        class="day-cell {{item.empty ? 'empty' : ''}} {{selectedDates.indexOf(item.date) > -1 ? 'selected' : ''}}"
+        class="day-cell {{item.empty ? 'empty' : ''}} {{item.selected ? 'selected' : ''}}"
         bindtap="toggleDate"
         data-date="{{item.date}}"
       >
-        <text wx:if="{{!item.empty}}">{{item.day}}</text>
+        <text wx:if="{{!item.empty}}" class="day-text">{{item.day}}</text>
       </view>
     </view>
 
@@ -99,7 +99,7 @@
 <!-- 菜品选择器 -->
 <dish-picker
   show="{{showPicker}}"
-  selectedIds="{{pickerSelectedIds}}"
-  bind:confirm="onPickerConfirm"
+  excludeIds="{{pickerExcludeIds}}"
+  bind:add="onPickerAdd"
   bind:close="onPickerClose"
 />
