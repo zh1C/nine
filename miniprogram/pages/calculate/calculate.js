@@ -14,6 +14,9 @@ Page({
     showPicker: false,
     pickerExcludeIds: [], // 当天已选菜品ID，传给picker用于过滤
 
+    // Tab展示数据
+    dateTabList: [], // [{date, label, weekDay, dishCount}]
+
     // 数据源
     allDishes: [],
     gardens: [],
@@ -127,6 +130,7 @@ Page({
       this.setData({ currentDateIdx: selectedDates.length - 1 });
     }
     this.refreshCalendarSelection();
+    this.buildDateTabList();
   },
 
   // 判断当前是否有已配置菜品
@@ -145,6 +149,7 @@ Page({
     });
     this.setData({ selectedDates: dates, currentDateIdx: 0, dailyDishes });
     this.refreshCalendarSelection();
+    this.buildDateTabList();
   },
 
   // 快捷选择：本周剩余
@@ -218,6 +223,27 @@ Page({
     this.setData({ currentDateIdx: idx });
   },
 
+  // 生成 Tab 显示数据
+  buildDateTabList() {
+    const { selectedDates, dailyDishes } = this.data;
+    const weekNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+    const dateTabList = selectedDates.map(dateStr => {
+      const d = new Date(dateStr);
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const dishes = dailyDishes[dateStr] || [];
+
+      return {
+        date: dateStr,
+        label: `${month}/${day} ${weekNames[d.getDay()]}`,
+        dishCount: dishes.length > 9 ? 'N' : dishes.length,
+      };
+    });
+
+    this.setData({ dateTabList });
+  },
+
   // ========== 菜品选择 ==========
   async loadAllDishes() {
     const res = await wx.cloud.callFunction({
@@ -277,6 +303,7 @@ Page({
       dailyDishes: updatedDailyDishes,
       pickerExcludeIds: dishes.map((d) => d._id),
     });
+    this.buildDateTabList();
   },
 
   removeDailyDish(e) {
@@ -288,6 +315,7 @@ Page({
     const updatedDailyDishes = { ...dailyDishes };
     updatedDailyDishes[currentDate] = dishes;
     this.setData({ dailyDishes: updatedDailyDishes });
+    this.buildDateTabList();
   },
 
   // ========== 计算逻辑 ==========

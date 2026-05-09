@@ -63,13 +63,17 @@
     <!-- 日期Tab -->
     <scroll-view class="date-tabs" scroll-x>
       <view
-        wx:for="{{selectedDates}}"
-        wx:key="*this"
+        wx:for="{{dateTabList}}"
+        wx:key="date"
         class="date-tab {{currentDateIdx === index ? 'active' : ''}}"
         data-idx="{{index}}"
         bindtap="switchDateTab"
       >
-        <text>{{item}}</text>
+        <text class="tab-text">{{item.label}}</text>
+        <!-- 菜品数量徽标 -->
+        <view wx:if="{{item.dishCount > 0}}" class="tab-badge">{{item.dishCount}}</view>
+        <!-- 未选菜品小红点 -->
+        <view wx:elif="{{item.dishCount === 0}}" class="tab-dot"></view>
       </view>
     </scroll-view>
 
