@@ -215,7 +215,7 @@ const deleteUser = async (event) => {
 // 添加菜品
 const addDish = async (event) => {
   try {
-    const { name, imageFileID, ingredients } = event;
+    const { name, imageFileID, ingredients, ratios } = event;
     const wxContext = cloud.getWXContext();
     const res = await db.collection("dishes").add({
       data: {
@@ -223,6 +223,7 @@ const addDish = async (event) => {
         name,
         imageFileID: imageFileID || "",
         ingredients: ingredients || [],
+        ratios: ratios || {},
         createTime: db.serverDate(),
         updateTime: db.serverDate(),
       },
@@ -273,11 +274,12 @@ const getDishDetail = async (event) => {
 // 更新菜品
 const updateDish = async (event) => {
   try {
-    const { dishId, name, imageFileID, ingredients } = event;
+    const { dishId, name, imageFileID, ingredients, ratios } = event;
     const updateData = { updateTime: db.serverDate() };
     if (name !== undefined) updateData.name = name;
     if (imageFileID !== undefined) updateData.imageFileID = imageFileID;
     if (ingredients !== undefined) updateData.ingredients = ingredients;
+    if (ratios !== undefined) updateData.ratios = ratios;
     await db.collection("dishes").doc(dishId).update({
       data: updateData,
     });

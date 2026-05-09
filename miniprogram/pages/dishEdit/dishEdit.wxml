@@ -28,15 +28,15 @@
     />
   </view>
 
-  <!-- 配料比例 -->
+  <!-- 配料列表 -->
   <view class="card">
-    <view class="section-title">配料比例</view>
-    <view class="tip-text">配料比例表示：每1单位成品中各配料的用量</view>
+    <view class="section-title">配料列表</view>
+    <view class="tip-text">定义该菜品包含哪些配料</view>
 
     <view class="ingredient-header">
       <text class="col-name">配料名</text>
-      <text class="col-ratio">比例</text>
       <text class="col-unit">单位</text>
+      <text class="col-advance">提前送货</text>
       <text class="col-action">操作</text>
     </view>
 
@@ -48,14 +48,6 @@
         data-idx="{{index}}"
         bindinput="onInputIngredientName"
       />
-      <input
-        class="ingredient-ratio"
-        placeholder="比例"
-        type="digit"
-        value="{{item.ratio}}"
-        data-idx="{{index}}"
-        bindinput="onInputIngredientRatio"
-      />
       <picker
         class="ingredient-unit"
         range="{{unitOptions}}"
@@ -65,11 +57,55 @@
       >
         <view class="unit-picker">{{item.unit}} ▼</view>
       </picker>
+      <view class="advance-check" data-idx="{{index}}" bindtap="toggleAdvance">
+        <view class="checkbox {{item.advance ? 'checked' : ''}}">
+          <text wx:if="{{item.advance}}">✓</text>
+        </view>
+      </view>
       <view class="remove-btn" data-idx="{{index}}" bindtap="removeIngredient">✕</view>
     </view>
 
     <view class="add-ingredient-btn" bindtap="addIngredient">
       <text>+ 添加配料</text>
+    </view>
+  </view>
+
+  <!-- 各园区配料比例 -->
+  <view class="card">
+    <view class="section-title">各园区配料比例</view>
+    <view class="tip-text">为每个园区设定各配料的比例（不填写则不保存）</view>
+
+    <view wx:if="{{gardens.length === 0}}" class="empty-garden-tip">
+      <text>暂无园区数据，请先到「园区管理」中添加园区</text>
+    </view>
+
+    <view wx:for="{{gardens}}" wx:key="gardenId" class="garden-section">
+      <view class="garden-header" bindtap="toggleGarden" data-idx="{{index}}">
+        <view class="garden-header-left">
+          <text class="garden-title">{{item.name}}</text>
+          <view class="garden-status {{item.filled ? 'status-filled' : 'status-empty'}}">
+            <text class="garden-status-text">{{item.filled ? '已填写' : '未填写'}}</text>
+          </view>
+        </view>
+        <text class="garden-arrow">{{item.expanded ? '▲' : '▼'}}</text>
+      </view>
+
+      <view class="garden-body" wx:if="{{item.expanded}}">
+        <view wx:for="{{ingredients}}" wx:for-item="ing" wx:for-index="ingIdx" wx:key="ingIdx" class="ratio-row">
+          <text class="ratio-label">{{ing.name || '配料' + (ingIdx + 1)}}</text>
+          <input
+            class="ratio-input"
+            placeholder="比例"
+            type="digit"
+            value="{{item.ratios[ingIdx]}}"
+            data-garden-idx="{{index}}"
+            data-ing-idx="{{ingIdx}}"
+            bindinput="onInputRatio"
+          />
+          <text class="ratio-unit">{{ing.unit}}</text>
+          <text class="advance-tag" wx:if="{{ing.advance}}">🚚</text>
+        </view>
+      </view>
     </view>
   </view>
 

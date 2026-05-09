@@ -20,6 +20,13 @@
   margin-bottom: 20rpx;
 }
 
+.tip-text {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 20rpx;
+}
+
+/* 图片上传 */
 .image-upload {
   width: 240rpx;
   height: 240rpx;
@@ -54,6 +61,7 @@
   color: #999;
 }
 
+/* 菜品名称 */
 .name-input {
   height: 80rpx;
   border: 1rpx solid #e0e0e0;
@@ -63,12 +71,7 @@
   background: #fafafa;
 }
 
-.tip-text {
-  font-size: 24rpx;
-  color: #999;
-  margin-bottom: 20rpx;
-}
-
+/* 配料列表 */
 .ingredient-header {
   display: flex;
   align-items: center;
@@ -83,14 +86,15 @@
   color: #666;
 }
 
-.col-ratio {
+.col-unit {
   flex: 2;
   font-size: 24rpx;
   color: #666;
 }
 
-.col-unit {
-  flex: 2;
+.col-advance {
+  width: 100rpx;
+  text-align: center;
   font-size: 24rpx;
   color: #666;
 }
@@ -119,17 +123,6 @@
   background: #fafafa;
 }
 
-.ingredient-ratio {
-  flex: 2;
-  height: 64rpx;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  padding: 0 12rpx;
-  font-size: 26rpx;
-  margin-right: 12rpx;
-  background: #fafafa;
-}
-
 .ingredient-unit {
   flex: 2;
   margin-right: 12rpx;
@@ -144,6 +137,32 @@
   font-size: 26rpx;
   background: #fafafa;
   text-align: center;
+}
+
+/* 提前送货复选框 */
+.advance-check {
+  width: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkbox {
+  width: 44rpx;
+  height: 44rpx;
+  border: 2rpx solid #ccc;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #fff;
+  transition: all 0.2s;
+}
+
+.checkbox.checked {
+  background: #4CAF50;
+  border-color: #4CAF50;
 }
 
 .remove-btn {
@@ -166,6 +185,135 @@
   font-size: 28rpx;
 }
 
+.add-ingredient-btn:active {
+  opacity: 0.7;
+}
+
+/* 园区比例区域 */
+.empty-garden-tip {
+  padding: 40rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+}
+
+.garden-section {
+  border: 1rpx solid #e8e8e8;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
+
+.garden-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 24rpx;
+  background: #fafafa;
+}
+
+.garden-header:active {
+  background: #f0f0f0;
+}
+
+.garden-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.garden-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.garden-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40rpx;
+  padding: 0 12rpx;
+  border-radius: 16rpx;
+}
+
+.garden-status-text {
+  font-size: 22rpx;
+  line-height: 1;
+}
+
+.status-filled {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-empty {
+  background: #f5f5f5;
+  color: #999;
+}
+
+.garden-arrow {
+  font-size: 24rpx;
+  color: #999;
+  display: flex;
+  align-items: center;
+  height: 44rpx;
+  line-height: 44rpx;
+}
+
+.garden-body {
+  padding: 20rpx 24rpx;
+  border-top: 1rpx solid #e8e8e8;
+}
+
+.ratio-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.ratio-row:last-child {
+  margin-bottom: 0;
+}
+
+.ratio-label {
+  width: 140rpx;
+  font-size: 26rpx;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 64rpx;
+  line-height: 64rpx;
+}
+
+.ratio-input {
+  flex: 1;
+  height: 64rpx;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+  font-size: 26rpx;
+  background: #fafafa;
+  margin: 0 12rpx;
+}
+
+.ratio-unit {
+  width: 60rpx;
+  font-size: 24rpx;
+  color: #666;
+  height: 64rpx;
+  line-height: 64rpx;
+}
+
+.advance-tag {
+  margin-left: 8rpx;
+  font-size: 24rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+}
+
+/* 保存按钮 */
 .save-btn {
   width: 100%;
   height: 88rpx;
