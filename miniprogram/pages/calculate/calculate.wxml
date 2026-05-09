@@ -1,5 +1,20 @@
 <!--pages/calculate/calculate.wxml-->
 <view class="calculate-page">
+  <!-- 页面加载中 -->
+  <view wx:if="{{pageLoading}}" class="page-loading">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载数据中...</text>
+  </view>
+
+  <!-- 加载失败 -->
+  <view wx:elif="{{loadError}}" class="page-error">
+    <text class="error-icon">⚠️</text>
+    <text class="error-text">数据加载失败，请重试</text>
+    <view class="retry-btn" bindtap="retryLoad">重新加载</view>
+  </view>
+
+  <!-- 主内容 -->
+  <block wx:else>
   <!-- 日期选择 -->
   <view class="card">
     <view class="section-title">📅 选择下单日期</view>
@@ -94,13 +109,15 @@
   <button class="calculate-btn" bindtap="handleCalculate" wx:if="{{selectedDates.length > 0}}">
     开始计算 →
   </button>
+  </block>
+
+  <!-- 菜品选择器 -->
+  <dish-picker
+    show="{{showPicker}}"
+    excludeIds="{{pickerExcludeIds}}"
+    allDishes="{{allDishes}}"
+    bind:add="onPickerAdd"
+    bind:close="onPickerClose"
+  />
 </view>
 
-<!-- 菜品选择器 -->
-<dish-picker
-  show="{{showPicker}}"
-  excludeIds="{{pickerExcludeIds}}"
-  allDishes="{{allDishes}}"
-  bind:add="onPickerAdd"
-  bind:close="onPickerClose"
-/>

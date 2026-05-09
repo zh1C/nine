@@ -18,18 +18,41 @@ Page({
     allDishes: [],
     gardens: [],
 
-    loading: false,
+    pageLoading: true, // 页面级loading，两个请求都完成后才显示内容
+    loadError: false, // 加载是否出错
   },
 
-  onLoad() {
+  async onLoad() {
     const now = new Date();
     this.setData({
       currentYear: now.getFullYear(),
       currentMonth: now.getMonth() + 1,
+      pageLoading: true,
+      loadError: false,
     });
     this.generateCalendar();
-    this.loadGardens();
-    this.loadAllDishes();
+    // 并发加载园区和菜品数据，全部完成后关闭loading
+    try {
+      await Promise.all([this.loadGardens(), this.loadAllDishes()]);
+    } catch (e) {
+      console.error('页面数据加载失败', e);
+      this.setData({ loadError: true });
+    } finally {
+      this.setData({ pageLoading: false });
+    }
+  },
+
+  // 重新加载
+  async retryLoad() {
+    this.setData({ pageLoading: true, loadError: false });
+    try {
+      await Promise.all([this.loadGardens(), this.loadAllDishes()]);
+    } catch (e) {
+      console.error('页面数据加载失败', e);
+      this.setData({ loadError: true });
+    } finally {
+      this.setData({ pageLoading: false });
+    }
   },
 
   // ========== 日历逻辑 ==========
@@ -106,10 +129,9 @@ Page({
     this.refreshCalendarSelection();
   },
 
-  // 判断当前是否有已选日期或已配置菜品
+  // 判断当前是否有已配置菜品
   hasExistingSelection() {
-    const { selectedDates, dailyDishes } = this.data;
-    if (selectedDates.length > 0) return true;
+    const { dailyDishes } = this.data;
     return Object.keys(dailyDishes).some(key => dailyDishes[key] && dailyDishes[key].length > 0);
   },
 
@@ -198,30 +220,22 @@ Page({
 
   // ========== 菜品选择 ==========
   async loadAllDishes() {
-    try {
-      const res = await wx.cloud.callFunction({
-        name: "quickstartFunctions",
-        data: { type: "getDishes", page: 1, pageSize: 200 },
-      });
-      if (res.result.success) {
-        this.setData({ allDishes: res.result.data.list });
-      }
-    } catch (e) {
-      console.error("加载菜品失败", e);
+    const res = await wx.cloud.callFunction({
+      name: "quickstartFunctions",
+      data: { type: "getDishes", page: 1, pageSize: 200 },
+    });
+    if (res.result.success) {
+      this.setData({ allDishes: res.result.data.list });
     }
   },
 
   async loadGardens() {
-    try {
-      const res = await wx.cloud.callFunction({
-        name: "quickstartFunctions",
-        data: { type: "getGardens" },
-      });
-      if (res.result.success) {
-        this.setData({ gardens: res.result.data.list });
-      }
-    } catch (e) {
-      console.error("加载园区失败", e);
+    const res = await wx.cloud.callFunction({
+      name: "quickstartFunctions",
+      data: { type: "getGardens" },
+    });
+    if (res.result.success) {
+      this.setData({ gardens: res.result.data.list });
     }
   },
 
