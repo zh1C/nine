@@ -36,6 +36,7 @@
     <view class="ingredient-header">
       <text class="col-name">配料名</text>
       <text class="col-unit">单位</text>
+      <text class="col-type">类型</text>
       <text class="col-advance">提前送货</text>
       <text class="col-action">操作</text>
     </view>
@@ -56,6 +57,15 @@
         bindchange="onPickerChange"
       >
         <view class="unit-picker">{{item.unit}} ▼</view>
+      </picker>
+      <picker
+        class="ingredient-type"
+        range="{{typeOptions}}"
+        value="{{typeOptions.indexOf(item.type)}}"
+        data-idx="{{index}}"
+        bindchange="onTypePickerChange"
+      >
+        <view class="type-picker">{{item.type}} ▼</view>
       </picker>
       <view class="advance-check" data-idx="{{index}}" bindtap="toggleAdvance">
         <view class="checkbox {{item.advance ? 'checked' : ''}}">

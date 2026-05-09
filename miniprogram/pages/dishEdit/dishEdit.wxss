@@ -92,6 +92,12 @@
   color: #666;
 }
 
+.col-type {
+  flex: 2;
+  font-size: 24rpx;
+  color: #666;
+}
+
 .col-advance {
   width: 100rpx;
   text-align: center;
@@ -126,6 +132,22 @@
 .ingredient-unit {
   flex: 2;
   margin-right: 12rpx;
+}
+
+.ingredient-type {
+  flex: 2;
+  margin-right: 12rpx;
+}
+
+.type-picker {
+  height: 64rpx;
+  line-height: 64rpx;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  padding: 0 12rpx;
+  font-size: 26rpx;
+  background: #fafafa;
+  text-align: center;
 }
 
 .unit-picker {

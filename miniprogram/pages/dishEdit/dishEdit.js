@@ -9,6 +9,7 @@ Page({
     ingredients: [],
     gardens: [],
     unitOptions: ["kg", "g", "个", "ml", "L", "根", "片", "块", "勺"],
+    typeOptions: ["肉类", "蔬菜", "海鲜", "豆制品", "主食", "调料", "其他"],
     loading: false,
   },
 
@@ -35,7 +36,7 @@ Page({
     } else {
       wx.setNavigationBarTitle({ title: "新增菜品" });
       this.setData({
-        ingredients: [{ name: "", unit: "kg", advance: false }],
+        ingredients: [{ name: "", unit: "kg", type: "其他", advance: false }],
       });
       this.loadGardens();
     }
@@ -97,9 +98,10 @@ Page({
             ? dish.ingredients.map((i) => ({
                 name: i.name || "",
                 unit: i.unit || "kg",
+                type: i.type || "其他",
                 advance: i.advance || false,
               }))
-            : [{ name: "", unit: "kg", advance: false }];
+            : [{ name: "", unit: "kg", type: "其他", advance: false }];
 
         this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients });
         await this.loadGardens(dish.ratios || {});
@@ -129,6 +131,12 @@ Page({
     this.setData({ [key]: this.data.unitOptions[e.detail.value] });
   },
 
+  onTypePickerChange(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const key = `ingredients[${idx}].type`;
+    this.setData({ [key]: this.data.typeOptions[e.detail.value] });
+  },
+
   toggleAdvance(e) {
     const idx = e.currentTarget.dataset.idx;
     const key = `ingredients[${idx}].advance`;
@@ -136,7 +144,7 @@ Page({
   },
 
   addIngredient() {
-    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", advance: false }];
+    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", type: "其他", advance: false }];
     // 所有园区比例数组同步新增一个空位
     const gardens = this.data.gardens.map((g) => ({
       ...g,
@@ -250,6 +258,7 @@ Page({
     const processedIngredients = validIngredients.map((item) => ({
       name: item.name.trim(),
       unit: item.unit,
+      type: item.type || "其他",
       advance: item.advance || false,
     }));
 
