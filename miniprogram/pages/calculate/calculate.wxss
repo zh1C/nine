@@ -20,26 +20,146 @@
   margin-bottom: 20rpx;
 }
 
-.garden-input {
-  height: 80rpx;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  padding: 0 24rpx;
-  font-size: 30rpx;
-  background: #fafafa;
+/* 日历 */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
 }
 
-.empty-dishes {
-  padding: 40rpx 0;
-  text-align: center;
-}
-
-.empty-text {
+.nav-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 28rpx;
-  color: #999;
+  color: #666;
+  background: #f5f5f5;
+  border-radius: 50%;
 }
 
-.dish-row {
+.nav-btn:active {
+  background: #e0e0e0;
+}
+
+.nav-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.calendar-week {
+  display: flex;
+  margin-bottom: 12rpx;
+}
+
+.week-cell {
+  flex: 1;
+  text-align: center;
+  font-size: 24rpx;
+  color: #999;
+  padding: 8rpx 0;
+}
+
+.calendar-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.day-cell {
+  width: calc(100% / 7);
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #333;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.day-cell.empty {
+  pointer-events: none;
+}
+
+.day-cell.selected {
+  background: #4CAF50;
+  color: #fff;
+  font-weight: bold;
+}
+
+.day-cell:active:not(.empty):not(.selected) {
+  background: #e8f5e9;
+}
+
+/* 快捷按钮 */
+.quick-btns {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.quick-btn {
+  flex: 1;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f5e9;
+  color: #4CAF50;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.quick-btn:active {
+  opacity: 0.7;
+}
+
+/* 已选日期 */
+.selected-dates {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.selected-label {
+  font-size: 26rpx;
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+/* 日期Tab */
+.date-tabs {
+  white-space: nowrap;
+  margin-bottom: 20rpx;
+  padding-bottom: 8rpx;
+}
+
+.date-tab {
+  display: inline-block;
+  padding: 12rpx 24rpx;
+  margin-right: 12rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  color: #666;
+  background: #f5f5f5;
+}
+
+.date-tab.active {
+  background: #4CAF50;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* 每日菜品列表 */
+.daily-dishes {
+  margin-bottom: 20rpx;
+}
+
+.dish-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -47,20 +167,24 @@
   border-bottom: 1rpx solid #f5f5f5;
 }
 
-.dish-row-info {
+.dish-item:last-child {
+  border-bottom: none;
+}
+
+.dish-item-info {
   display: flex;
   align-items: center;
   flex: 1;
 }
 
-.dish-row-image {
+.dish-item-image {
   width: 64rpx;
   height: 64rpx;
   border-radius: 8rpx;
   margin-right: 16rpx;
 }
 
-.dish-row-placeholder {
+.dish-item-placeholder {
   width: 64rpx;
   height: 64rpx;
   border-radius: 8rpx;
@@ -72,42 +196,28 @@
   font-size: 32rpx;
 }
 
-.dish-row-name {
+.dish-item-name {
   font-size: 28rpx;
   color: #333;
-  flex: 1;
 }
 
-.dish-row-quantity {
-  display: flex;
-  align-items: center;
-}
-
-.quantity-input {
-  width: 120rpx;
-  height: 56rpx;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  text-align: center;
-  font-size: 26rpx;
-  background: #fafafa;
-}
-
-.quantity-unit {
-  font-size: 24rpx;
-  color: #666;
-  margin-left: 8rpx;
-}
-
-.dish-remove {
-  margin-left: 16rpx;
+.dish-item-remove {
   color: #FF5252;
   font-size: 28rpx;
-  padding: 8rpx;
+  padding: 8rpx 16rpx;
+}
+
+.empty-daily {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999;
 }
 
 .add-dish-btn {
-  margin-top: 20rpx;
   text-align: center;
   padding: 24rpx;
   border: 1rpx dashed #4CAF50;
@@ -116,6 +226,11 @@
   font-size: 28rpx;
 }
 
+.add-dish-btn:active {
+  opacity: 0.7;
+}
+
+/* 计算按钮 */
 .calculate-btn {
   width: 100%;
   height: 88rpx;

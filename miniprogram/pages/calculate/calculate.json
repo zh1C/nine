@@ -2,5 +2,5 @@
   "usingComponents": {
     "dish-picker": "/components/dishPicker/dishPicker"
   },
-  "navigationBarTitleText": "生成配料比"
+  "navigationBarTitleText": "生成配料单"
 }

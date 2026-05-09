@@ -1,22 +1,187 @@
 // pages/calculate/calculate.js
 Page({
   data: {
-    gardenName: "",
-    selectedDishes: [], // { _id, name, imageFileID, ingredients, quantity }
+    // 日历相关
+    currentYear: 2026,
+    currentMonth: 5,
+    calendarDays: [],
+    selectedDates: [], // ['2026-05-09', ...]
+    weekDays: ["日", "一", "二", "三", "四", "五", "六"],
+
+    // 菜品选择相关
+    currentDateIdx: 0, // 当前Tab选中的日期索引
+    dailyDishes: {}, // { '2026-05-09': [{_id, name, imageFileID, ingredients, ratios}], ... }
     showPicker: false,
-    selectedIds: [],
+    pickerSelectedIds: [],
+
+    // 数据源
+    allDishes: [],
+    gardens: [],
+
+    loading: false,
   },
 
-  onLoad() {},
+  onLoad() {
+    const now = new Date();
+    this.setData({
+      currentYear: now.getFullYear(),
+      currentMonth: now.getMonth() + 1,
+    });
+    this.generateCalendar();
+    this.loadGardens();
+    this.loadAllDishes();
+  },
 
-  onInputGardenName(e) {
-    this.setData({ gardenName: e.detail.value });
+  // ========== 日历逻辑 ==========
+  generateCalendar() {
+    const { currentYear, currentMonth } = this.data;
+    const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+    const calendarDays = [];
+    // 前置空白
+    for (let i = 0; i < firstDay; i++) {
+      calendarDays.push({ day: "", date: "", empty: true });
+    }
+    // 日期
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      calendarDays.push({ day: d, date: dateStr, empty: false });
+    }
+    this.setData({ calendarDays });
+  },
+
+  prevMonth() {
+    let { currentYear, currentMonth } = this.data;
+    currentMonth--;
+    if (currentMonth < 1) {
+      currentMonth = 12;
+      currentYear--;
+    }
+    this.setData({ currentYear, currentMonth });
+    this.generateCalendar();
+  },
+
+  nextMonth() {
+    let { currentYear, currentMonth } = this.data;
+    currentMonth++;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    }
+    this.setData({ currentYear, currentMonth });
+    this.generateCalendar();
+  },
+
+  toggleDate(e) {
+    const date = e.currentTarget.dataset.date;
+    if (!date) return;
+    let selectedDates = [...this.data.selectedDates];
+    const idx = selectedDates.indexOf(date);
+    if (idx > -1) {
+      selectedDates.splice(idx, 1);
+      // 同时移除该天的菜品数据
+      const dailyDishes = { ...this.data.dailyDishes };
+      delete dailyDishes[date];
+      this.setData({ selectedDates: selectedDates.sort(), dailyDishes });
+    } else {
+      selectedDates.push(date);
+      selectedDates.sort();
+      this.setData({ selectedDates });
+    }
+    // 调整 currentDateIdx
+    if (selectedDates.length > 0 && this.data.currentDateIdx >= selectedDates.length) {
+      this.setData({ currentDateIdx: selectedDates.length - 1 });
+    }
+  },
+
+  // 快捷选择：本周剩余
+  selectThisWeek() {
+    const today = new Date();
+    const dates = [];
+    const dayOfWeek = today.getDay(); // 0=周日
+    // 从明天到本周日
+    for (let i = 1; i <= 7 - dayOfWeek; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      dates.push(this.formatDate(d));
+    }
+    this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
+  },
+
+  // 快捷选择：下周一至五
+  selectNextWeek() {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysUntilNextMon = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    const dates = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + daysUntilNextMon + i);
+      dates.push(this.formatDate(d));
+    }
+    this.setData({ selectedDates: dates.sort(), currentDateIdx: 0 });
+  },
+
+  formatDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  },
+
+  getWeekDay(dateStr) {
+    const d = new Date(dateStr);
+    return ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+  },
+
+  // ========== Tab 切换 ==========
+  switchDateTab(e) {
+    const idx = e.currentTarget.dataset.idx;
+    this.setData({ currentDateIdx: idx });
+  },
+
+  // ========== 菜品选择 ==========
+  async loadAllDishes() {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: { type: "getDishes", page: 1, pageSize: 200 },
+      });
+      if (res.result.success) {
+        this.setData({ allDishes: res.result.data.list });
+      }
+    } catch (e) {
+      console.error("加载菜品失败", e);
+    }
+  },
+
+  async loadGardens() {
+    try {
+      const app = getApp();
+      const res = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "getGardens",
+          operatorUsername: app.globalData.userInfo ? app.globalData.userInfo.username : "",
+        },
+      });
+      if (res.result.success) {
+        this.setData({ gardens: res.result.data.list });
+      }
+    } catch (e) {
+      console.error("加载园区失败", e);
+    }
   },
 
   showDishPicker() {
+    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    if (selectedDates.length === 0) {
+      wx.showToast({ title: "请先选择日期", icon: "none" });
+      return;
+    }
+    const currentDate = selectedDates[currentDateIdx];
+    const currentDishes = dailyDishes[currentDate] || [];
     this.setData({
       showPicker: true,
-      selectedIds: this.data.selectedDishes.map((d) => d._id),
+      pickerSelectedIds: currentDishes.map((d) => d._id),
     });
   },
 
@@ -26,94 +191,195 @@ Page({
 
   onPickerConfirm(e) {
     const dishes = e.detail.dishes;
-    // 合并已有的quantity
-    const existMap = {};
-    this.data.selectedDishes.forEach((d) => {
-      existMap[d._id] = d.quantity;
-    });
-
-    const selectedDishes = dishes.map((d) => ({
+    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    const currentDate = selectedDates[currentDateIdx];
+    const updatedDailyDishes = { ...dailyDishes };
+    updatedDailyDishes[currentDate] = dishes.map((d) => ({
       _id: d._id,
       name: d.name,
-      imageFileID: d.imageFileID,
-      ingredients: d.ingredients,
-      quantity: existMap[d._id] || "",
+      imageFileID: d.imageFileID || "",
+      ingredients: d.ingredients || [],
+      ratios: d.ratios || {},
     }));
-
-    this.setData({
-      selectedDishes,
-      showPicker: false,
-    });
+    this.setData({ dailyDishes: updatedDailyDishes, showPicker: false });
   },
 
-  onInputQuantity(e) {
+  removeDailyDish(e) {
     const idx = e.currentTarget.dataset.idx;
-    const selectedDishes = this.data.selectedDishes;
-    selectedDishes[idx].quantity = e.detail.value;
-    this.setData({ selectedDishes });
+    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    const currentDate = selectedDates[currentDateIdx];
+    const dishes = [...(dailyDishes[currentDate] || [])];
+    dishes.splice(idx, 1);
+    const updatedDailyDishes = { ...dailyDishes };
+    updatedDailyDishes[currentDate] = dishes;
+    this.setData({ dailyDishes: updatedDailyDishes });
   },
 
-  removeDish(e) {
-    const idx = e.currentTarget.dataset.idx;
-    const selectedDishes = this.data.selectedDishes;
-    selectedDishes.splice(idx, 1);
-    this.setData({ selectedDishes });
-  },
-
+  // ========== 计算逻辑 ==========
   handleCalculate() {
-    const { gardenName, selectedDishes } = this.data;
+    const { selectedDates, dailyDishes, gardens } = this.data;
 
-    if (!gardenName.trim()) {
-      wx.showToast({ title: "请输入园区名称", icon: "none" });
+    if (selectedDates.length === 0) {
+      wx.showToast({ title: "请选择日期", icon: "none" });
       return;
     }
 
-    if (selectedDishes.length === 0) {
-      wx.showToast({ title: "请选择菜品", icon: "none" });
-      return;
-    }
-
-    // 验证所有菜品都输入了量
-    for (const dish of selectedDishes) {
-      if (!dish.quantity || parseFloat(dish.quantity) <= 0) {
-        wx.showToast({ title: `请输入${dish.name}的需求量`, icon: "none" });
-        return;
+    // 检查至少有一天选了菜品
+    let hasAnyDish = false;
+    for (const date of selectedDates) {
+      if (dailyDishes[date] && dailyDishes[date].length > 0) {
+        hasAnyDish = true;
+        break;
       }
     }
+    if (!hasAnyDish) {
+      wx.showToast({ title: "请至少为一天选择菜品", icon: "none" });
+      return;
+    }
 
-    // 计算配料总量
-    const ingredientMap = {}; // { name: { total, unit } }
+    if (gardens.length === 0) {
+      wx.showToast({ title: "暂无园区数据", icon: "none" });
+      return;
+    }
 
-    selectedDishes.forEach((dish) => {
-      const quantity = parseFloat(dish.quantity);
-      dish.ingredients.forEach((ing) => {
-        const key = `${ing.name}_${ing.unit}`;
-        if (!ingredientMap[key]) {
-          ingredientMap[key] = { name: ing.name, total: 0, unit: ing.unit };
-        }
-        ingredientMap[key].total += quantity * ing.ratio;
+    // 类型排序权重
+    const typeOrder = { "肉类": 1, "海鲜": 2, "蔬菜": 3, "豆制品": 4, "主食": 5, "调料": 6, "其他": 7 };
+
+    // 初始化结果结构: { date: { gardenId: { 'ingName_unit': amount } } }
+    const resultMap = {};
+    selectedDates.forEach((date) => {
+      resultMap[date] = {};
+      gardens.forEach((g) => {
+        resultMap[date][g.gardenId] = {};
       });
     });
 
-    const result = Object.values(ingredientMap).map((item) => ({
-      name: item.name,
-      total: Math.round(item.total * 1000) / 1000, // 保留3位小数
-      unit: item.unit,
-    }));
+    // 计算
+    for (const date of selectedDates) {
+      const dishes = dailyDishes[date] || [];
+      const dateIndex = selectedDates.indexOf(date);
 
-    // 准备传递到结果页的数据
-    const items = selectedDishes.map((d) => ({
-      dishId: d._id,
-      dishName: d.name,
-      quantity: parseFloat(d.quantity),
-    }));
+      for (const dish of dishes) {
+        for (const garden of gardens) {
+          const gardenKey = String(garden.gardenId);
+          const ratioArr = dish.ratios[gardenKey] || [];
 
-    // 存储数据到全局，通过页面传递
+          for (let ingIdx = 0; ingIdx < dish.ingredients.length; ingIdx++) {
+            const ing = dish.ingredients[ingIdx];
+            const ratio = ratioArr[ingIdx] !== undefined ? parseFloat(ratioArr[ingIdx]) : 0;
+            if (ratio === 0 || isNaN(ratio)) continue;
+
+            const amount = 1 * ratio; // 默认菜品量=1
+            const key = `${ing.name}_${ing.unit}_${ing.type || "其他"}`;
+
+            // 提前送货逻辑
+            let targetDate = date;
+            if (ing.advance && dateIndex > 0) {
+              targetDate = selectedDates[dateIndex - 1];
+            }
+
+            if (!resultMap[targetDate]) {
+              resultMap[targetDate] = {};
+            }
+            if (!resultMap[targetDate][garden.gardenId]) {
+              resultMap[targetDate][garden.gardenId] = {};
+            }
+
+            if (!resultMap[targetDate][garden.gardenId][key]) {
+              resultMap[targetDate][garden.gardenId][key] = {
+                name: ing.name,
+                unit: ing.unit,
+                type: ing.type || "其他",
+                amount: 0,
+              };
+            }
+            resultMap[targetDate][garden.gardenId][key].amount += amount;
+          }
+        }
+      }
+    }
+
+    // 构建按天表格数据
+    const tables = selectedDates.map((date) => {
+      // 收集当天所有园区的所有配料key
+      const allKeys = new Set();
+      gardens.forEach((g) => {
+        const gardenData = resultMap[date][g.gardenId] || {};
+        Object.keys(gardenData).forEach((k) => allKeys.add(k));
+      });
+
+      // 构建行数据
+      const rows = [];
+      allKeys.forEach((key) => {
+        const sample = resultMap[date][gardens[0].gardenId]?.[key] ||
+          Object.values(resultMap[date]).find((gd) => gd[key])?.[key];
+        if (!sample) return;
+
+        const amounts = {};
+        gardens.forEach((g) => {
+          const val = resultMap[date][g.gardenId]?.[key]?.amount || 0;
+          amounts[g.gardenId] = Math.round(val * 1000) / 1000;
+        });
+
+        rows.push({
+          name: sample.name,
+          unit: sample.unit,
+          type: sample.type,
+          amounts,
+        });
+      });
+
+      // 按类型排序，同类型按名称排序
+      rows.sort((a, b) => {
+        const orderA = typeOrder[a.type] || 7;
+        const orderB = typeOrder[b.type] || 7;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
+
+      const d = new Date(date);
+      const weekDay = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+      return {
+        date,
+        dateLabel: `${d.getMonth() + 1}月${d.getDate()}日（周${weekDay}）`,
+        rows,
+      };
+    });
+
+    // 构建菜品下单汇总
+    const summary = {
+      dates: selectedDates.map((date) => {
+        const d = new Date(date);
+        const weekDay = ["日", "一", "二", "三", "四", "五", "六"][d.getDay()];
+        return {
+          date,
+          label: `${d.getMonth() + 1}/${d.getDate()} 周${weekDay}`,
+        };
+      }),
+      gardens: gardens.map((g) => ({ gardenId: g.gardenId, name: g.name })),
+      data: {},
+    };
+    selectedDates.forEach((date) => {
+      summary.data[date] = {};
+      const dishes = dailyDishes[date] || [];
+      gardens.forEach((g) => {
+        // 列出该园区在当天有配料比例的菜品
+        const gardenDishes = dishes.filter((dish) => {
+          const ratioArr = dish.ratios[String(g.gardenId)] || [];
+          return ratioArr.some((r) => r !== undefined && r !== null && r !== "" && parseFloat(r) > 0);
+        });
+        summary.data[date][g.gardenId] = gardenDishes.map((d) => d.name);
+      });
+    });
+
+    // 存入全局，跳转结果页
     const app = getApp();
     app.globalData.calculateResult = {
-      gardenName: gardenName.trim(),
-      items,
-      result,
+      tables,
+      summary,
+      gardens: gardens.map((g) => ({ gardenId: g.gardenId, name: g.name })),
+      selectedDates,
+      dailyDishes, // 用于保存记录
     };
 
     wx.navigateTo({ url: "/pages/result/result" });

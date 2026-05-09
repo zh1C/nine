@@ -434,23 +434,23 @@ const deleteGarden = async (event) => {
 
 // 保存计算记录
 const saveRecord = async (event) => {
-  try {
-    const { gardenName, items, result, resultImageFileID } = event;
-    const wxContext = cloud.getWXContext();
-    const res = await db.collection("records").add({
-      data: {
-        _openid: wxContext.OPENID,
-        gardenName,
-        items,
-        result,
-        resultImageFileID: resultImageFileID || "",
-        createTime: db.serverDate(),
-      },
-    });
-    return { success: true, data: { _id: res._id } };
-  } catch (e) {
-    return { success: false, errMsg: e.message || "保存记录失败" };
-  }
+try {
+const { selectedDates, tables, summary, gardens } = event;
+const wxContext = cloud.getWXContext();
+const res = await db.collection("records").add({
+data: {
+_openid: wxContext.OPENID,
+selectedDates: selectedDates || [],
+tables: tables || [],
+summary: summary || {},
+gardens: gardens || [],
+createTime: db.serverDate(),
+},
+});
+return { success: true, data: { _id: res._id } };
+} catch (e) {
+return { success: false, errMsg: e.message || "保存记录失败" };
+}
 };
 
 // 获取历史记录

@@ -1,61 +1,74 @@
 <!--pages/result/result.wxml-->
 <view class="result-page">
-  <!-- 结果卡片 -->
-  <view class="result-card">
-    <view class="result-header">
-      <text class="garden-name">🏫 {{gardenName}}</text>
-      <text class="result-date">📅 {{date}}</text>
+  <!-- 每天的配料表 -->
+  <view wx:for="{{tables}}" wx:key="date" class="table-card">
+    <view class="table-card-header">
+      <text class="table-card-title">📋 {{item.dateLabel}} 配料清单</text>
     </view>
 
-    <view class="result-section">
-      <view class="section-title">📋 配料汇总</view>
-      <view class="table">
-        <view class="table-header">
-          <text class="th th-name">配料名称</text>
-          <text class="th th-amount">总量</text>
-          <text class="th th-unit">单位</text>
+    <view class="table-wrapper">
+      <!-- 表头 -->
+      <scroll-view class="table-scroll" scroll-x>
+        <view class="table-inner">
+          <view class="table-header-row">
+            <text class="th th-name">配料</text>
+            <text wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="th th-garden">{{garden.name}}</text>
+            <text class="th th-unit">单位</text>
+          </view>
+
+          <!-- 数据行 -->
+          <view wx:for="{{item.rows}}" wx:for-item="row" wx:for-index="rowIdx" wx:key="name" class="table-data-row {{rowIdx % 2 === 0 ? 'even' : ''}}">
+            <text class="td td-name">{{row.name}}</text>
+            <text wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="td td-amount {{row.amounts[garden.gardenId] > 0 ? 'has-value' : ''}}">{{row.amounts[garden.gardenId] || 0}}</text>
+            <text class="td td-unit">{{row.unit}}</text>
+          </view>
         </view>
-        <view wx:for="{{result}}" wx:key="name" class="table-row {{index % 2 === 0 ? 'even' : ''}}">
-          <text class="td td-name">{{item.name}}</text>
-          <text class="td td-amount">{{item.total}}</text>
-          <text class="td td-unit">{{item.unit}}</text>
-        </view>
-      </view>
+      </scroll-view>
     </view>
 
-    <view class="result-section">
-      <view class="section-title">🍲 菜品明细</view>
-      <view class="table">
-        <view class="table-header">
-          <text class="th th-name">菜品名称</text>
-          <text class="th th-amount">需求量</text>
-          <text class="th th-unit">单位</text>
-        </view>
-        <view wx:for="{{items}}" wx:key="dishId" class="table-row {{index % 2 === 0 ? 'even' : ''}}">
-          <text class="td td-name">{{item.dishName}}</text>
-          <text class="td td-amount">{{item.quantity}}</text>
-          <text class="td td-unit">kg</text>
-        </view>
-      </view>
+    <!-- 保存按钮 -->
+    <view class="table-save-btn" data-idx="{{index}}" data-type="daily" bindtap="generateTableImage">
+      <text>💾 保存此表为图片</text>
     </view>
   </view>
 
-  <!-- 生成的图片预览 -->
-  <view wx:if="{{tempImagePath}}" class="image-preview" bindtap="previewImage">
-    <image class="result-image" src="{{tempImagePath}}" mode="widthFix" />
-    <text class="preview-tip">点击预览大图</text>
+  <!-- 菜品下单汇总表 -->
+  <view class="table-card summary-card">
+    <view class="table-card-header summary-header">
+      <text class="table-card-title">📋 菜品下单汇总</text>
+    </view>
+
+    <view class="table-wrapper">
+      <scroll-view class="table-scroll" scroll-x>
+        <view class="table-inner">
+          <view class="table-header-row">
+            <text class="th th-date">日期</text>
+            <text wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="th th-garden-wide">{{garden.name}}</text>
+          </view>
+
+          <view wx:for="{{summary.dates}}" wx:for-item="dateObj" wx:for-index="dIdx" wx:key="date" class="table-data-row {{dIdx % 2 === 0 ? 'even' : ''}}">
+            <text class="td td-date">{{dateObj.label}}</text>
+            <view wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="td td-dishes">
+              <block wx:if="{{summary.data[dateObj.date][garden.gardenId].length > 0}}">
+                <text wx:for="{{summary.data[dateObj.date][garden.gardenId]}}" wx:for-item="dishName" wx:key="*this" class="dish-tag">{{dishName}}</text>
+              </block>
+              <text wx:else class="no-dish">-</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 保存按钮 -->
+    <view class="table-save-btn" data-idx="999" data-type="summary" bindtap="generateTableImage">
+      <text>💾 保存此表为图片</text>
+    </view>
   </view>
 
-  <!-- 操作按钮 -->
-  <view class="action-buttons">
-    <button class="action-btn generate-btn" bindtap="generateImage" loading="{{generating}}">
-      生成图片
-    </button>
-    <button wx:if="{{tempImagePath}}" class="action-btn save-album-btn" bindtap="saveToAlbum">
-      保存到相册
-    </button>
+  <!-- 底部操作按钮 -->
+  <view class="bottom-actions">
     <button class="action-btn save-record-btn" bindtap="saveRecord" loading="{{saving}}">
-      保存记录
+      📥 保存记录到云端
     </button>
   </view>
 </view>
@@ -64,10 +77,10 @@
 <canvas
   type="2d"
   id="resultCanvas"
-  style="position:fixed;left:-9999px;top:-9999px;width:600px;height:800px;"
+  style="position:fixed;left:-9999px;top:-9999px;width:800px;height:1200px;"
 />
 <!-- 旧版Canvas降级 -->
 <canvas
   canvas-id="resultCanvasLegacy"
-  style="position:fixed;left:-9999px;top:-9999px;width:600px;height:800px;"
+  style="position:fixed;left:-9999px;top:-9999px;width:800px;height:1200px;"
 />
