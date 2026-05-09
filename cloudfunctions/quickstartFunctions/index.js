@@ -302,6 +302,132 @@ const deleteDish = async (event) => {
   }
 };
 
+// ============ 园区模块 ============
+
+// 管理员权限校验
+const checkAdmin = async (operatorUsername) => {
+  const res = await db
+    .collection("users")
+    .where({ username: operatorUsername })
+    .get();
+  return res.data.length > 0 && res.data[0].role === "admin";
+};
+
+// 获取下一个 gardenId（查询当前最大值 + 1）
+const getNextGardenId = async () => {
+  const res = await db
+    .collection("gardens")
+    .orderBy("gardenId", "desc")
+    .limit(1)
+    .field({ gardenId: true })
+    .get();
+  return res.data.length === 0 ? 1 : res.data[0].gardenId + 1;
+};
+
+// 新增园区
+const addGarden = async (event) => {
+  try {
+    const { operatorUsername, name } = event;
+    if (!(await checkAdmin(operatorUsername))) {
+      return { success: false, errMsg: "无权限操作" };
+    }
+    if (!name || !name.trim()) {
+      return { success: false, errMsg: "园区名称不能为空" };
+    }
+    // 检查园区名称是否已存在
+    const existGarden = await db
+      .collection("gardens")
+      .where({ name: name.trim() })
+      .get();
+    if (existGarden.data.length > 0) {
+      return { success: false, errMsg: "园区名称已存在" };
+    }
+    const gardenId = await getNextGardenId();
+    await db.collection("gardens").add({
+      data: {
+        gardenId,
+        name: name.trim(),
+        createTime: db.serverDate(),
+        updateTime: db.serverDate(),
+      },
+    });
+    return { success: true, data: { gardenId } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "新增园区失败" };
+  }
+};
+
+// 获取园区列表
+const getGardens = async (event) => {
+  try {
+    const { operatorUsername, keyword } = event;
+    if (!(await checkAdmin(operatorUsername))) {
+      return { success: false, errMsg: "无权限操作" };
+    }
+    let query = db.collection("gardens");
+    if (keyword) {
+      query = query.where({
+        name: db.RegExp({ regexp: keyword, options: "i" }),
+      });
+    }
+    const countRes = await query.count();
+    const res = await query.orderBy("gardenId", "asc").get();
+    return { success: true, data: { list: res.data, total: countRes.total } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "获取园区列表失败" };
+  }
+};
+
+// 修改园区
+const updateGarden = async (event) => {
+  try {
+    const { operatorUsername, gardenId, name } = event;
+    if (!(await checkAdmin(operatorUsername))) {
+      return { success: false, errMsg: "无权限操作" };
+    }
+    if (!name || !name.trim()) {
+      return { success: false, errMsg: "园区名称不能为空" };
+    }
+    // 检查新名称是否与其他园区重复
+    const existGarden = await db
+      .collection("gardens")
+      .where({ name: name.trim(), gardenId: _.neq(gardenId) })
+      .get();
+    if (existGarden.data.length > 0) {
+      return { success: false, errMsg: "园区名称已存在" };
+    }
+    const res = await db
+      .collection("gardens")
+      .where({ gardenId })
+      .update({
+        data: { name: name.trim(), updateTime: db.serverDate() },
+      });
+    if (res.stats.updated === 0) {
+      return { success: false, errMsg: "园区不存在" };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "修改园区失败" };
+  }
+};
+
+// 删除园区
+const deleteGarden = async (event) => {
+  try {
+    const { operatorUsername, gardenId } = event;
+    if (!(await checkAdmin(operatorUsername))) {
+      return { success: false, errMsg: "无权限操作" };
+    }
+    const res = await db.collection("gardens").where({ gardenId }).remove();
+    if (res.stats.removed === 0) {
+      return { success: false, errMsg: "园区不存在" };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "删除园区失败" };
+  }
+};
+
 // ============ 记录模块 ============
 
 // 保存计算记录
@@ -377,6 +503,15 @@ exports.main = async (event, context) => {
       return await updateDish(event);
     case "deleteDish":
       return await deleteDish(event);
+    // 园区模块
+    case "addGarden":
+      return await addGarden(event);
+    case "getGardens":
+      return await getGardens(event);
+    case "updateGarden":
+      return await updateGarden(event);
+    case "deleteGarden":
+      return await deleteGarden(event);
     // 记录模块
     case "saveRecord":
       return await saveRecord(event);

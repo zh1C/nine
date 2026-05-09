@@ -7,7 +7,8 @@
     "pages/calculate/calculate",
     "pages/result/result",
     "pages/profile/profile",
-    "pages/userManage/userManage"
+    "pages/userManage/userManage",
+    "pages/gardenManage/gardenManage"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",

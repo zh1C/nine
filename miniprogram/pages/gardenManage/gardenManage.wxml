@@ -1,0 +1,61 @@
+<!--pages/gardenManage/gardenManage.wxml-->
+<view class="garden-manage-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索园区名称..." value="{{keyword}}" bindinput="onInputSearch" bindconfirm="handleSearch" />
+    <view class="search-btn" bindtap="handleSearch">
+      <text>搜索</text>
+    </view>
+    <view class="clear-btn" wx:if="{{keyword}}" bindtap="clearSearch">
+      <text>清除</text>
+    </view>
+  </view>
+
+  <!-- 新增按钮 -->
+  <view class="add-bar">
+    <view class="add-btn" bindtap="showAddDialog">
+      <text>+ 新增园区</text>
+    </view>
+  </view>
+
+  <!-- 园区列表 -->
+  <view class="garden-list">
+    <view class="garden-card" wx:for="{{gardens}}" wx:key="gardenId">
+      <view class="garden-info">
+        <view class="garden-name">{{item.name}}</view>
+        <view class="garden-time">创建时间: {{item.createTimeStr}}</view>
+      </view>
+      <view class="garden-actions">
+        <view class="edit-btn" bindtap="showEditDialog" data-garden="{{item}}">
+          <text>编辑</text>
+        </view>
+        <view class="delete-btn" bindtap="deleteGarden" data-garden-id="{{item.gardenId}}" data-name="{{item.name}}">
+          <text>删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && gardens.length === 0}}">
+    <text class="empty-icon">🏢</text>
+    <text class="empty-text">暂无园区数据</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 新增/编辑弹窗 -->
+  <view class="dialog-mask" wx:if="{{showDialog}}" bindtap="hideDialog">
+    <view class="dialog-box" catchtap="">
+      <text class="dialog-title">{{isEdit ? '编辑园区' : '新增园区'}}</text>
+      <input class="dialog-input" placeholder="请输入园区名称" value="{{dialogName}}" bindinput="onDialogInput" focus="{{showDialog}}" />
+      <view class="dialog-btns">
+        <view class="dialog-cancel" bindtap="hideDialog">取消</view>
+        <view class="dialog-confirm" bindtap="confirmDialog">确定</view>
+      </view>
+    </view>
+  </view>
+</view>

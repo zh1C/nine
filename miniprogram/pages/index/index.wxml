@@ -33,6 +33,13 @@
       <text class="menu-desc">计算配料用量</text>
     </view>
 
+    <!-- 管理员：园区管理 -->
+    <view class="menu-item" wx:if="{{isAdmin}}" bindtap="navigateTo" data-page="/pages/gardenManage/gardenManage">
+      <view class="menu-icon">🏢</view>
+      <text class="menu-title">园区管理</text>
+      <text class="menu-desc">管理园区信息</text>
+    </view>
+
     <!-- 管理员：用户管理 -->
     <view class="menu-item" wx:if="{{isAdmin}}" bindtap="navigateTo" data-page="/pages/userManage/userManage">
       <view class="menu-icon">👥</view>
