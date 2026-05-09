@@ -362,10 +362,7 @@ const addGarden = async (event) => {
 // 获取园区列表
 const getGardens = async (event) => {
   try {
-    const { operatorUsername, keyword } = event;
-    if (!(await checkAdmin(operatorUsername))) {
-      return { success: false, errMsg: "无权限操作" };
-    }
+    const { keyword } = event;
     let query = db.collection("gardens");
     if (keyword) {
       query = query.where({
@@ -461,23 +458,23 @@ const deleteGarden = async (event) => {
 
 // 保存计算记录
 const saveRecord = async (event) => {
-try {
-const { selectedDates, tables, summary, gardens } = event;
-const wxContext = cloud.getWXContext();
-const res = await db.collection("records").add({
-data: {
-_openid: wxContext.OPENID,
-selectedDates: selectedDates || [],
-tables: tables || [],
-summary: summary || {},
-gardens: gardens || [],
-createTime: db.serverDate(),
-},
-});
-return { success: true, data: { _id: res._id } };
-} catch (e) {
-return { success: false, errMsg: e.message || "保存记录失败" };
-}
+  try {
+    const { selectedDates, tables, summary, gardens } = event;
+    const wxContext = cloud.getWXContext();
+    const res = await db.collection("records").add({
+      data: {
+        _openid: wxContext.OPENID,
+        selectedDates: selectedDates || [],
+        tables: tables || [],
+        summary: summary || {},
+        gardens: gardens || [],
+        createTime: db.serverDate(),
+      },
+    });
+    return { success: true, data: { _id: res._id } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "保存记录失败" };
+  }
 };
 
 // 获取历史记录

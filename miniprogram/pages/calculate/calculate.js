@@ -168,13 +168,9 @@ Page({
 
   async loadGardens() {
     try {
-      const app = getApp();
       const res = await wx.cloud.callFunction({
         name: "quickstartFunctions",
-        data: {
-          type: "getGardens",
-          operatorUsername: app.globalData.userInfo ? app.globalData.userInfo.username : "",
-        },
+        data: { type: "getGardens" },
       });
       if (res.result.success) {
         this.setData({ gardens: res.result.data.list });

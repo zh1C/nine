@@ -100,6 +100,7 @@
 <dish-picker
   show="{{showPicker}}"
   excludeIds="{{pickerExcludeIds}}"
+  allDishes="{{allDishes}}"
   bind:add="onPickerAdd"
   bind:close="onPickerClose"
 />

@@ -17,8 +17,7 @@
     </view>
 
     <scroll-view class="picker-list" scroll-y>
-      <view wx:if="{{loading}}" class="picker-loading">加载中...</view>
-      <view wx:elif="{{dishes.length === 0}}" class="picker-empty">暂无更多菜品</view>
+      <view wx:if="{{dishes.length === 0}}" class="picker-empty">暂无更多菜品</view>
       <view
         wx:for="{{dishes}}"
         wx:key="_id"

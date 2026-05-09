@@ -9,20 +9,23 @@ Component({
       type: Array,
       value: [],
     },
+    allDishes: {
+      type: Array,
+      value: [],
+    },
   },
 
   data: {
     dishes: [],
     keyword: "",
-    loading: false,
     visible: false, // 控制动画显隐
   },
 
   observers: {
-    show(val) {
-      if (val) {
-        this.setData({ visible: true });
-        this.loadDishes();
+    "show, excludeIds, allDishes"(show) {
+      if (show) {
+        this.setData({ visible: true, keyword: "" });
+        this.filterDishes();
       } else {
         // 延迟隐藏，等动画结束
         setTimeout(() => {
@@ -35,40 +38,21 @@ Component({
   methods: {
     onInputSearch(e) {
       this.setData({ keyword: e.detail.value });
-      this.loadDishes();
+      this.filterDishes();
     },
 
     handleSearch() {
-      this.loadDishes();
-    },
-
-    async loadDishes() {
-      this.setData({ loading: true });
-      try {
-        const res = await wx.cloud.callFunction({
-          name: "quickstartFunctions",
-          data: {
-            type: "getDishes",
-            keyword: this.data.keyword,
-            page: 1,
-            pageSize: 200,
-          },
-        });
-        if (res.result.success) {
-          this._allDishes = res.result.data.list;
-          this.filterDishes();
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        this.setData({ loading: false });
-      }
+      this.filterDishes();
     },
 
     filterDishes() {
       const excludeIds = this.properties.excludeIds || [];
-      const allDishes = this._allDishes || [];
-      const dishes = allDishes.filter((d) => excludeIds.indexOf(d._id) === -1);
+      const allDishes = this.properties.allDishes || [];
+      const keyword = this.data.keyword.trim().toLowerCase();
+      let dishes = allDishes.filter((d) => excludeIds.indexOf(d._id) === -1);
+      if (keyword) {
+        dishes = dishes.filter((d) => d.name.toLowerCase().indexOf(keyword) > -1);
+      }
       this.setData({ dishes });
     },
 
