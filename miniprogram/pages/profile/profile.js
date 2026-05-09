@@ -1,4 +1,6 @@
 // pages/profile/profile.js
+const app = getApp();
+
 Page({
   data: {
     username: "",
@@ -13,7 +15,6 @@ Page({
   },
 
   onLoad() {
-    const app = getApp();
     const userInfo = app.globalData.userInfo;
     if (!userInfo) {
       wx.reLaunch({ url: "/pages/login/login" });
@@ -68,11 +69,6 @@ Page({
         filePath,
       });
 
-      // 如果之前有头像，删除旧头像
-      if (this.data.avatar) {
-        wx.cloud.deleteFile({ fileList: [this.data.avatar] });
-      }
-
       this.setData({ avatar: uploadRes.fileID });
       wx.hideLoading();
       wx.showToast({ title: "头像已更新", icon: "success" });
@@ -111,7 +107,8 @@ Page({
     this.setData({ saving: true });
 
     try {
-      // 更新个人资料
+      // 更新个人资料（传入旧头像用于云函数端删除）
+      const oldAvatar = app.globalData.userInfo.avatar || "";
       const profileRes = await wx.cloud.callFunction({
         name: "quickstartFunctions",
         data: {
@@ -119,6 +116,7 @@ Page({
           username,
           nickname: nickname.trim(),
           avatar,
+          oldAvatar: avatar !== oldAvatar ? oldAvatar : "",
         },
       });
 
@@ -148,7 +146,6 @@ Page({
       }
 
       // 更新全局状态
-      const app = getApp();
       app.globalData.userInfo.nickname = nickname.trim();
       app.globalData.userInfo.avatar = avatar;
       wx.setStorageSync("userInfo", app.globalData.userInfo);

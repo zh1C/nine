@@ -86,7 +86,7 @@ const login = async (event) => {
 // 更新个人资料（别名、头像）
 const updateProfile = async (event) => {
   try {
-    const { username, nickname, avatar } = event;
+    const { username, nickname, avatar, oldAvatar } = event;
     if (!username) {
       return { success: false, errMsg: "用户名不能为空" };
     }
@@ -108,6 +108,15 @@ const updateProfile = async (event) => {
         .collection("users")
         .where({ username })
         .update({ data: updateData });
+    }
+
+    // 如果有旧头像需要删除，在云函数端执行（管理员权限，不受存储安全规则限制）
+    if (oldAvatar) {
+      try {
+        await cloud.deleteFile({ fileList: [oldAvatar] });
+      } catch (delErr) {
+        console.error("删除旧头像失败:", delErr);
+      }
     }
 
     return { success: true, data: { nickname, avatar } };
@@ -280,6 +289,20 @@ const updateDish = async (event) => {
     if (imageFileID !== undefined) updateData.imageFileID = imageFileID;
     if (ingredients !== undefined) updateData.ingredients = ingredients;
     if (ratios !== undefined) updateData.ratios = ratios;
+
+    // 如果更新了图片，先删除旧图片（管理员权限，不受存储安全规则限制）
+    if (imageFileID !== undefined) {
+      try {
+        const oldDish = await db.collection("dishes").doc(dishId).get();
+        const oldImageFileID = oldDish.data.imageFileID;
+        if (oldImageFileID && oldImageFileID !== imageFileID) {
+          await cloud.deleteFile({ fileList: [oldImageFileID] });
+        }
+      } catch (delErr) {
+        console.error("删除旧菜品图片失败:", delErr);
+      }
+    }
+
     await db.collection("dishes").doc(dishId).update({
       data: updateData,
     });
