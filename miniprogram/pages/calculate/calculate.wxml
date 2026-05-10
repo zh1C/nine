@@ -71,7 +71,7 @@
       >
         <text class="tab-text">{{item.label}}</text>
         <!-- 菜品数量徽标 -->
-        <view wx:if="{{item.dishCount > 0}}" class="tab-badge">{{item.dishCount}}</view>
+        <view wx:if="{{item.dishCount > 0}}" class="tab-badge">{{item.dishCount > 9 ? 'N' : item.dishCount}}</view>
         <!-- 未选菜品小红点 -->
         <view wx:elif="{{item.dishCount === 0}}" class="tab-dot"></view>
       </view>

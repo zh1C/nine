@@ -237,7 +237,7 @@ Page({
       return {
         date: dateStr,
         label: `${month}/${day} ${weekNames[d.getDay()]}`,
-        dishCount: dishes.length > 9 ? 'N' : dishes.length,
+        dishCount: dishes.length,
       };
     });
 

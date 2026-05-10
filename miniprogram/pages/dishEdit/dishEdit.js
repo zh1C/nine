@@ -293,6 +293,8 @@ Page({
         });
       }
 
+      // 标记列表需要刷新
+      getApp().globalData.dishListNeedRefresh = true;
       wx.showToast({ title: "保存成功", icon: "success" });
       setTimeout(() => {
         wx.navigateBack();

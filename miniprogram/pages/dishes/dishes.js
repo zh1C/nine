@@ -1,4 +1,6 @@
 // pages/dishes/dishes.js
+const app = getApp();
+
 Page({
   data: {
     dishes: [],
@@ -16,7 +18,6 @@ Page({
 
   // 权限校验：仅管理员可访问
   checkPermission() {
-    const app = getApp();
     const userInfo = app.globalData.userInfo;
     if (!userInfo || userInfo.role !== "admin") {
       wx.showModal({
@@ -29,13 +30,18 @@ Page({
       });
       return;
     }
+    // 首次加载，完成后清除标记
+    app.globalData.dishListNeedRefresh = false;
     this.loadDishes();
   },
 
   onShow() {
-    // 每次显示页面时刷新列表
-    this.setData({ page: 1, dishes: [], hasMore: true });
-    this.loadDishes();
+    // 仅在数据发生变更时才刷新列表（新增/编辑/删除后），查看详情返回不刷新
+    if (app.globalData.dishListNeedRefresh) {
+      app.globalData.dishListNeedRefresh = false;
+      this.setData({ page: 1, dishes: [], hasMore: true });
+      this.loadDishes();
+    }
   },
 
   onInputSearch(e) {
