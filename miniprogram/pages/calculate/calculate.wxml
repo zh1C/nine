@@ -77,11 +77,31 @@
       </view>
     </scroll-view>
 
-    <!-- 当天已选菜品列表 -->
+    <!-- 学生/老师 子Tab -->
+    <view class="sub-tabs">
+      <view
+        class="sub-tab {{dailySubTab === 'student' ? 'active' : ''}}"
+        bindtap="switchSubTab"
+        data-tab="student"
+      >
+        <text>🎒 学生菜品</text>
+        <view wx:if="{{studentDishCount > 0}}" class="sub-badge">{{studentDishCount}}</view>
+      </view>
+      <view
+        class="sub-tab {{dailySubTab === 'teacher' ? 'active' : ''}}"
+        bindtap="switchSubTab"
+        data-tab="teacher"
+      >
+        <text>👨‍🏫 老师菜品</text>
+        <view wx:if="{{teacherDishCount > 0}}" class="sub-badge">{{teacherDishCount}}</view>
+      </view>
+    </view>
+
+    <!-- 当天当前类型已选菜品列表 -->
     <view class="daily-dishes">
-      <block wx:if="{{dailyDishes[selectedDates[currentDateIdx]] && dailyDishes[selectedDates[currentDateIdx]].length > 0}}">
+      <block wx:if="{{currentCategoryDishes.length > 0}}">
         <view
-          wx:for="{{dailyDishes[selectedDates[currentDateIdx]]}}"
+          wx:for="{{currentCategoryDishes}}"
           wx:key="_id"
           class="dish-item"
         >
@@ -99,13 +119,13 @@
         </view>
       </block>
       <view wx:else class="empty-daily">
-        <text class="empty-text">当天未选择菜品</text>
+        <text class="empty-text">{{dailySubTab === 'student' ? '学生' : '老师'}}当天未选择菜品</text>
       </view>
     </view>
 
     <!-- 添加菜品按钮 -->
     <view class="add-dish-btn" bindtap="showDishPicker">
-      <text>+ 添加菜品（可搜索）</text>
+      <text>+ 添加{{dailySubTab === 'student' ? '学生' : '老师'}}菜品（可搜索）</text>
     </view>
   </view>
 
@@ -119,9 +139,8 @@
   <dish-picker
     show="{{showPicker}}"
     excludeIds="{{pickerExcludeIds}}"
-    allDishes="{{allDishes}}"
+    allDishes="{{filteredDishes}}"
     bind:add="onPickerAdd"
     bind:close="onPickerClose"
   />
 </view>
-

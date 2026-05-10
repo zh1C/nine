@@ -28,6 +28,30 @@
     />
   </view>
 
+  <!-- 菜品类型 -->
+  <view class="card">
+    <view class="section-title">菜品类型</view>
+    <view class="tip-text">选择该菜品属于学生餐还是老师餐</view>
+    <view class="category-selector">
+      <view
+        class="category-option {{category === 'student' ? 'active' : ''}}"
+        bindtap="onSelectCategory"
+        data-value="student"
+      >
+        <text class="category-icon">🎒</text>
+        <text class="category-text">学生餐</text>
+      </view>
+      <view
+        class="category-option {{category === 'teacher' ? 'active' : ''}}"
+        bindtap="onSelectCategory"
+        data-value="teacher"
+      >
+        <text class="category-icon">👨‍🏫</text>
+        <text class="category-text">老师餐</text>
+      </view>
+    </view>
+  </view>
+
   <!-- 配料列表 -->
   <view class="card">
     <view class="section-title">配料列表</view>

@@ -10,9 +10,14 @@ Page({
 
     // 菜品选择相关
     currentDateIdx: 0, // 当前Tab选中的日期索引
-    dailyDishes: {}, // { '2026-05-09': [{_id, name, imageFileID, ingredients, ratios}], ... }
+    dailyDishes: {}, // { '2026-05-09': { student: [...], teacher: [...] }, ... }
+    dailySubTab: "student", // 当前子Tab: "student" | "teacher"
     showPicker: false,
     pickerExcludeIds: [], // 当天已选菜品ID，传给picker用于过滤
+    filteredDishes: [], // 根据当前子Tab过滤后的菜品列表
+    currentCategoryDishes: [], // 当前日期+类型下的菜品
+    studentDishCount: 0, // 当前日期下学生菜品数
+    teacherDishCount: 0, // 当前日期下老师菜品数
 
     // Tab展示数据
     dateTabList: [], // [{date, label, weekDay, dishCount}]
@@ -131,12 +136,17 @@ Page({
     }
     this.refreshCalendarSelection();
     this.buildDateTabList();
+    this.updateCurrentCategoryView();
   },
 
   // 判断当前是否有已配置菜品
   hasExistingSelection() {
     const { dailyDishes } = this.data;
-    return Object.keys(dailyDishes).some(key => dailyDishes[key] && dailyDishes[key].length > 0);
+    return Object.keys(dailyDishes).some(key => {
+      const dayData = dailyDishes[key];
+      if (!dayData) return false;
+      return (dayData.student && dayData.student.length > 0) || (dayData.teacher && dayData.teacher.length > 0);
+    });
   },
 
   // 应用快捷选择：更新日期并清理孤儿菜品数据
@@ -150,6 +160,7 @@ Page({
     this.setData({ selectedDates: dates, currentDateIdx: 0, dailyDishes });
     this.refreshCalendarSelection();
     this.buildDateTabList();
+    this.updateCurrentCategoryView();
   },
 
   // 快捷选择：本周剩余
@@ -221,6 +232,38 @@ Page({
   switchDateTab(e) {
     const idx = e.currentTarget.dataset.idx;
     this.setData({ currentDateIdx: idx });
+    this.updateCurrentCategoryView();
+  },
+
+  // 切换学生/老师子Tab
+  switchSubTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    this.setData({ dailySubTab: tab });
+    this.updateCurrentCategoryView();
+  },
+
+  // 更新当前日期+类型的视图数据
+  updateCurrentCategoryView() {
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes } = this.data;
+    if (selectedDates.length === 0) {
+      this.setData({ currentCategoryDishes: [], studentDishCount: 0, teacherDishCount: 0, filteredDishes: [] });
+      return;
+    }
+    const currentDate = selectedDates[currentDateIdx];
+    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
+    const studentDishes = dayData.student || [];
+    const teacherDishes = dayData.teacher || [];
+    const currentCategoryDishes = dailySubTab === "student" ? studentDishes : teacherDishes;
+
+    // 过滤allDishes：只显示对应category的菜品
+    const filteredDishes = allDishes.filter(d => (d.category || "student") === dailySubTab);
+
+    this.setData({
+      currentCategoryDishes,
+      studentDishCount: studentDishes.length,
+      teacherDishCount: teacherDishes.length,
+      filteredDishes,
+    });
   },
 
   // 生成 Tab 显示数据
@@ -232,12 +275,13 @@ Page({
       const d = new Date(dateStr);
       const month = d.getMonth() + 1;
       const day = d.getDate();
-      const dishes = dailyDishes[dateStr] || [];
+      const dayData = dailyDishes[dateStr] || { student: [], teacher: [] };
+      const dishCount = (dayData.student || []).length + (dayData.teacher || []).length;
 
       return {
         date: dateStr,
         label: `${month}/${day} ${weekNames[d.getDay()]}`,
-        dishCount: dishes.length,
+        dishCount,
       };
     });
 
@@ -266,16 +310,20 @@ Page({
   },
 
   showDishPicker() {
-    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes } = this.data;
     if (selectedDates.length === 0) {
       wx.showToast({ title: "请先选择日期", icon: "none" });
       return;
     }
     const currentDate = selectedDates[currentDateIdx];
-    const currentDishes = dailyDishes[currentDate] || [];
+    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
+    const currentDishes = dayData[dailySubTab] || [];
+    // 过滤allDishes：只显示对应category的菜品
+    const filteredDishes = allDishes.filter(d => (d.category || "student") === dailySubTab);
     this.setData({
       showPicker: true,
       pickerExcludeIds: currentDishes.map((d) => d._id),
+      filteredDishes,
     });
   },
 
@@ -285,9 +333,10 @@ Page({
 
   onPickerAdd(e) {
     const dish = e.detail.dish;
-    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab } = this.data;
     const currentDate = selectedDates[currentDateIdx];
-    const dishes = [...(dailyDishes[currentDate] || [])];
+    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
+    const dishes = [...(dayData[dailySubTab] || [])];
     // 避免重复添加
     if (dishes.some((d) => d._id === dish._id)) return;
     dishes.push({
@@ -297,25 +346,28 @@ Page({
       ingredients: dish.ingredients || [],
       ratios: dish.ratios || {},
     });
-    const updatedDailyDishes = { ...dailyDishes };
-    updatedDailyDishes[currentDate] = dishes;
+    const updatedDayData = { ...dayData, [dailySubTab]: dishes };
+    const updatedDailyDishes = { ...dailyDishes, [currentDate]: updatedDayData };
     this.setData({
       dailyDishes: updatedDailyDishes,
       pickerExcludeIds: dishes.map((d) => d._id),
     });
     this.buildDateTabList();
+    this.updateCurrentCategoryView();
   },
 
   removeDailyDish(e) {
     const idx = e.currentTarget.dataset.idx;
-    const { selectedDates, currentDateIdx, dailyDishes } = this.data;
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab } = this.data;
     const currentDate = selectedDates[currentDateIdx];
-    const dishes = [...(dailyDishes[currentDate] || [])];
+    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
+    const dishes = [...(dayData[dailySubTab] || [])];
     dishes.splice(idx, 1);
-    const updatedDailyDishes = { ...dailyDishes };
-    updatedDailyDishes[currentDate] = dishes;
+    const updatedDayData = { ...dayData, [dailySubTab]: dishes };
+    const updatedDailyDishes = { ...dailyDishes, [currentDate]: updatedDayData };
     this.setData({ dailyDishes: updatedDailyDishes });
     this.buildDateTabList();
+    this.updateCurrentCategoryView();
   },
 
   // ========== 计算逻辑 ==========
@@ -330,7 +382,8 @@ Page({
     // 检查至少有一天选了菜品
     let hasAnyDish = false;
     for (const date of selectedDates) {
-      if (dailyDishes[date] && dailyDishes[date].length > 0) {
+      const dayData = dailyDishes[date];
+      if (dayData && ((dayData.student && dayData.student.length > 0) || (dayData.teacher && dayData.teacher.length > 0))) {
         hasAnyDish = true;
         break;
       }
@@ -357,9 +410,10 @@ Page({
       });
     });
 
-    // 计算
+    // 计算（合并学生+老师菜品，不区分类型）
     for (const date of selectedDates) {
-      const dishes = dailyDishes[date] || [];
+      const dayData = dailyDishes[date] || { student: [], teacher: [] };
+      const dishes = [...(dayData.student || []), ...(dayData.teacher || [])];
       const dateIndex = selectedDates.indexOf(date);
 
       for (const dish of dishes) {
@@ -449,7 +503,7 @@ Page({
       };
     });
 
-    // 构建菜品下单汇总
+    // 构建菜品下单汇总（区分学生/老师）
     const summary = {
       dates: selectedDates.map((date) => {
         const d = new Date(date);
@@ -464,14 +518,23 @@ Page({
     };
     selectedDates.forEach((date) => {
       summary.data[date] = {};
-      const dishes = dailyDishes[date] || [];
+      const dayData = dailyDishes[date] || { student: [], teacher: [] };
       gardens.forEach((g) => {
-        // 列出该园区在当天有配料比例的菜品
-        const gardenDishes = dishes.filter((dish) => {
-          const ratioArr = dish.ratios[String(g.gardenId)] || [];
+        const gardenKey = String(g.gardenId);
+        // 学生菜品
+        const studentDishes = (dayData.student || []).filter((dish) => {
+          const ratioArr = dish.ratios[gardenKey] || [];
           return ratioArr.some((r) => r !== undefined && r !== null && r !== "" && parseFloat(r) > 0);
         });
-        summary.data[date][g.gardenId] = gardenDishes.map((d) => d.name);
+        // 老师菜品
+        const teacherDishes = (dayData.teacher || []).filter((dish) => {
+          const ratioArr = dish.ratios[gardenKey] || [];
+          return ratioArr.some((r) => r !== undefined && r !== null && r !== "" && parseFloat(r) > 0);
+        });
+        summary.data[date][g.gardenId] = {
+          student: studentDishes.map((d) => d.name),
+          teacher: teacherDishes.map((d) => d.name),
+        };
       });
     });
 

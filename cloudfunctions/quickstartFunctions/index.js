@@ -224,7 +224,7 @@ const deleteUser = async (event) => {
 // 添加菜品
 const addDish = async (event) => {
   try {
-    const { name, imageFileID, ingredients, ratios } = event;
+    const { name, imageFileID, ingredients, ratios, category } = event;
     const wxContext = cloud.getWXContext();
     const res = await db.collection("dishes").add({
       data: {
@@ -233,6 +233,7 @@ const addDish = async (event) => {
         imageFileID: imageFileID || "",
         ingredients: ingredients || [],
         ratios: ratios || {},
+        category: category || "student", // "student" | "teacher"
         createTime: db.serverDate(),
         updateTime: db.serverDate(),
       },
@@ -246,15 +247,20 @@ const addDish = async (event) => {
 // 获取菜品列表
 const getDishes = async (event) => {
   try {
-    const { keyword, page = 1, pageSize = 20 } = event;
-    let query = db.collection("dishes");
+    const { keyword, page = 1, pageSize = 20, category } = event;
+    let whereCondition = {};
+    if (category) {
+      whereCondition.category = category;
+    }
     if (keyword) {
-      query = query.where({
-        name: db.RegExp({
-          regexp: keyword,
-          options: "i",
-        }),
+      whereCondition.name = db.RegExp({
+        regexp: keyword,
+        options: "i",
       });
+    }
+    let query = db.collection("dishes");
+    if (Object.keys(whereCondition).length > 0) {
+      query = query.where(whereCondition);
     }
     const countRes = await query.count();
     const total = countRes.total;
@@ -283,12 +289,13 @@ const getDishDetail = async (event) => {
 // 更新菜品
 const updateDish = async (event) => {
   try {
-    const { dishId, name, imageFileID, ingredients, ratios } = event;
+    const { dishId, name, imageFileID, ingredients, ratios, category } = event;
     const updateData = { updateTime: db.serverDate() };
     if (name !== undefined) updateData.name = name;
     if (imageFileID !== undefined) updateData.imageFileID = imageFileID;
     if (ingredients !== undefined) updateData.ingredients = ingredients;
     if (ratios !== undefined) updateData.ratios = ratios;
+    if (category !== undefined) updateData.category = category;
 
     // 如果更新了图片，先删除旧图片（管理员权限，不受存储安全规则限制）
     if (imageFileID !== undefined) {

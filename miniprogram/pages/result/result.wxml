@@ -49,10 +49,22 @@
           <view wx:for="{{summary.dates}}" wx:for-item="dateObj" wx:for-index="dIdx" wx:key="date" class="table-data-row {{dIdx % 2 === 0 ? 'even' : ''}}">
             <text class="td td-date">{{dateObj.label}}</text>
             <view wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="td td-dishes">
-              <block wx:if="{{summary.data[dateObj.date][garden.gardenId].length > 0}}">
-                <text wx:for="{{summary.data[dateObj.date][garden.gardenId]}}" wx:for-item="dishName" wx:key="*this" class="dish-tag">{{dishName}}</text>
-              </block>
-              <text wx:else class="no-dish">-</text>
+              <!-- 学生菜品分组 -->
+              <view wx:if="{{summary.data[dateObj.date][garden.gardenId].student.length > 0}}" class="dish-group student-group">
+                <text class="dish-group-label">🎒学生</text>
+                <view class="dish-tag-list">
+                  <text wx:for="{{summary.data[dateObj.date][garden.gardenId].student}}" wx:for-item="dishName" wx:key="*this" class="dish-tag student-tag">{{dishName}}</text>
+                </view>
+              </view>
+              <!-- 老师菜品分组 -->
+              <view wx:if="{{summary.data[dateObj.date][garden.gardenId].teacher.length > 0}}" class="dish-group teacher-group">
+                <text class="dish-group-label">👨‍🏫老师</text>
+                <view class="dish-tag-list">
+                  <text wx:for="{{summary.data[dateObj.date][garden.gardenId].teacher}}" wx:for-item="dishName" wx:key="*this" class="dish-tag teacher-tag">{{dishName}}</text>
+                </view>
+              </view>
+              <!-- 无菜品 -->
+              <text wx:if="{{summary.data[dateObj.date][garden.gardenId].student.length === 0 && summary.data[dateObj.date][garden.gardenId].teacher.length === 0}}" class="no-dish">-</text>
             </view>
           </view>
         </view>

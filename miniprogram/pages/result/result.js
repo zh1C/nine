@@ -168,21 +168,27 @@ Page({
 
     const padding = 30;
     const headerHeight = 80;
-    const rowHeight = 44;
+    const rowHeight = 36;
     const tableHeaderHeight = 44;
     const colDateWidth = 100;
-    const colGardenWidth = 120;
+    const colGardenWidth = 140;
     const canvasWidth = Math.max(colDateWidth + gardens.length * colGardenWidth + padding * 2, 600);
 
-    // 计算总行数：每天一行或多行（按最多菜品数决定）
+    // 计算总行数：每天按学生+老师菜品总数决定
     let totalRows = 0;
     summary.dates.forEach((dateObj) => {
-      let maxDishes = 1;
+      let maxLines = 1;
       gardens.forEach((g) => {
-        const dishes = summary.data[dateObj.date]?.[g.gardenId] || [];
-        maxDishes = Math.max(maxDishes, dishes.length);
+        const gardenData = summary.data[dateObj.date]?.[g.gardenId] || { student: [], teacher: [] };
+        const studentDishes = gardenData.student || [];
+        const teacherDishes = gardenData.teacher || [];
+        // 每个分组标题占1行 + 菜品行数
+        let lines = 0;
+        if (studentDishes.length > 0) lines += 1 + studentDishes.length;
+        if (teacherDishes.length > 0) lines += 1 + teacherDishes.length;
+        maxLines = Math.max(maxLines, lines || 1);
       });
-      totalRows += Math.max(maxDishes, 1);
+      totalRows += maxLines;
     });
 
     const canvasHeight = headerHeight + tableHeaderHeight + totalRows * rowHeight + padding * 2 + 20;
@@ -214,7 +220,7 @@ Page({
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 22px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("📋 菜品下单汇总", canvasWidth / 2, headerHeight / 2 + 8);
+      ctx.fillText("菜品下单汇总", canvasWidth / 2, headerHeight / 2 + 8);
 
       let y = headerHeight + 10;
 
@@ -234,14 +240,18 @@ Page({
       y += tableHeaderHeight;
 
       // 数据行
-      ctx.font = "13px sans-serif";
       summary.dates.forEach((dateObj, dIdx) => {
-        let maxDishes = 1;
+        let maxLines = 1;
         gardens.forEach((g) => {
-          const dishes = summary.data[dateObj.date]?.[g.gardenId] || [];
-          maxDishes = Math.max(maxDishes, dishes.length);
+          const gardenData = summary.data[dateObj.date]?.[g.gardenId] || { student: [], teacher: [] };
+          const studentDishes = gardenData.student || [];
+          const teacherDishes = gardenData.teacher || [];
+          let lines = 0;
+          if (studentDishes.length > 0) lines += 1 + studentDishes.length;
+          if (teacherDishes.length > 0) lines += 1 + teacherDishes.length;
+          maxLines = Math.max(maxLines, lines || 1);
         });
-        const blockHeight = Math.max(maxDishes, 1) * rowHeight;
+        const blockHeight = maxLines * rowHeight;
 
         if (dIdx % 2 === 0) {
           ctx.fillStyle = "#fafafa";
@@ -252,21 +262,47 @@ Page({
         ctx.fillStyle = "#333333";
         ctx.textAlign = "left";
         ctx.font = "bold 13px sans-serif";
-        ctx.fillText(dateObj.label, padding + 8, y + 28);
+        ctx.fillText(dateObj.label, padding + 8, y + 24);
 
         // 各园区菜品
-        ctx.font = "13px sans-serif";
         ctx.textAlign = "center";
         gardens.forEach((g, gIdx) => {
-          const dishes = summary.data[dateObj.date]?.[g.gardenId] || [];
+          const gardenData = summary.data[dateObj.date]?.[g.gardenId] || { student: [], teacher: [] };
+          const studentDishes = gardenData.student || [];
+          const teacherDishes = gardenData.teacher || [];
           const x = padding + colDateWidth + gIdx * colGardenWidth + colGardenWidth / 2;
-          dishes.forEach((dishName, dishIdx) => {
+          let lineY = y;
+
+          if (studentDishes.length > 0) {
+            ctx.fillStyle = "#1976D2";
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText("🎒学生", x, lineY + 22);
+            lineY += rowHeight;
+            ctx.font = "12px sans-serif";
             ctx.fillStyle = "#333333";
-            ctx.fillText(dishName, x, y + dishIdx * rowHeight + 28);
-          });
-          if (dishes.length === 0) {
+            studentDishes.forEach((dishName) => {
+              ctx.fillText(dishName, x, lineY + 22);
+              lineY += rowHeight;
+            });
+          }
+
+          if (teacherDishes.length > 0) {
+            ctx.fillStyle = "#E65100";
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText("👨‍🏫老师", x, lineY + 22);
+            lineY += rowHeight;
+            ctx.font = "12px sans-serif";
+            ctx.fillStyle = "#333333";
+            teacherDishes.forEach((dishName) => {
+              ctx.fillText(dishName, x, lineY + 22);
+              lineY += rowHeight;
+            });
+          }
+
+          if (studentDishes.length === 0 && teacherDishes.length === 0) {
             ctx.fillStyle = "#ccc";
-            ctx.fillText("-", x, y + 28);
+            ctx.font = "13px sans-serif";
+            ctx.fillText("-", x, y + 24);
           }
         });
 

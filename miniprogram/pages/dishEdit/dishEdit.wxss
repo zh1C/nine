@@ -71,6 +71,47 @@
   background: #fafafa;
 }
 
+/* 菜品类型选择器 */
+.category-selector {
+  display: flex;
+  gap: 24rpx;
+  padding: 16rpx 0;
+}
+
+.category-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30rpx 20rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 16rpx;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+
+.category-option.active {
+  border-color: #4CAF50;
+  background: #e8f5e9;
+  box-shadow: 0 2rpx 12rpx rgba(76, 175, 80, 0.15);
+}
+
+.category-icon {
+  font-size: 48rpx;
+  margin-bottom: 12rpx;
+}
+
+.category-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.category-option.active .category-text {
+  color: #2E7D32;
+  font-weight: bold;
+}
+
 /* 配料列表 */
 .ingredient-header {
   display: flex;

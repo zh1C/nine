@@ -10,6 +10,8 @@ Page({
     pageSize: 20,
     total: 0,
     hasMore: true,
+    activeTab: 0, // 0=学生, 1=老师
+    currentCategory: "student", // "student" | "teacher"
   },
 
   onLoad() {
@@ -44,6 +46,14 @@ Page({
     }
   },
 
+  // 切换学生/老师 Tab
+  switchTab(e) {
+    const tab = parseInt(e.currentTarget.dataset.tab);
+    const category = tab === 0 ? "student" : "teacher";
+    this.setData({ activeTab: tab, currentCategory: category, page: 1, dishes: [], hasMore: true });
+    this.loadDishes();
+  },
+
   onInputSearch(e) {
     this.setData({ keyword: e.detail.value });
   },
@@ -70,6 +80,7 @@ Page({
           keyword: this.data.keyword,
           page: this.data.page,
           pageSize: this.data.pageSize,
+          category: this.data.currentCategory,
         },
       });
 
@@ -98,7 +109,7 @@ Page({
   },
 
   goAddDish() {
-    wx.navigateTo({ url: "/pages/dishEdit/dishEdit" });
+    wx.navigateTo({ url: `/pages/dishEdit/dishEdit?category=${this.data.currentCategory}` });
   },
 
   goEditDish(e) {

@@ -16,11 +16,29 @@
     <view class="search-btn" bindtap="handleSearch">搜索</view>
   </view>
 
+  <!-- 学生/老师 Tab 切换 -->
+  <view class="category-tabs">
+    <view
+      class="category-tab {{activeTab === 0 ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="0"
+    >
+      <text>🎒 学生菜品</text>
+    </view>
+    <view
+      class="category-tab {{activeTab === 1 ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="1"
+    >
+      <text>👨‍🏫 老师菜品</text>
+    </view>
+  </view>
+
   <!-- 菜品列表 -->
   <view class="dish-list">
     <view wx:if="{{dishes.length === 0 && !loading}}" class="empty-tip">
       <text class="empty-icon">📭</text>
-      <text class="empty-text">暂无菜品，点击右上角添加</text>
+      <text class="empty-text">暂无{{activeTab === 0 ? '学生' : '老师'}}菜品，点击右下角添加</text>
     </view>
 
     <view wx:for="{{dishes}}" wx:key="_id" class="dish-card">

@@ -10,6 +10,7 @@ Page({
     gardens: [],
     unitOptions: ["kg", "g", "个", "ml", "L", "根", "片", "块", "勺"],
     typeOptions: ["肉类", "蔬菜", "海鲜", "豆制品", "主食", "调料", "其他"],
+    category: "student", // "student" | "teacher"
     loading: false,
   },
 
@@ -37,6 +38,7 @@ Page({
       wx.setNavigationBarTitle({ title: "新增菜品" });
       this.setData({
         ingredients: [{ name: "", unit: "kg", type: "其他", advance: false }],
+        category: options.category || "student",
       });
       this.loadGardens();
     }
@@ -103,7 +105,7 @@ Page({
               }))
             : [{ name: "", unit: "kg", type: "其他", advance: false }];
 
-        this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients });
+        this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients, category: dish.category || "student" });
         await this.loadGardens(dish.ratios || {});
       }
     } catch (e) {
@@ -116,6 +118,12 @@ Page({
   // ========== 菜品名称 ==========
   onInputName(e) {
     this.setData({ name: e.detail.value });
+  },
+
+  // ========== 菜品类型 ==========
+  onSelectCategory(e) {
+    const value = e.currentTarget.dataset.value;
+    this.setData({ category: value });
   },
 
   // ========== 配料操作 ==========
@@ -278,6 +286,7 @@ Page({
             imageFileID,
             ingredients: processedIngredients,
             ratios,
+            category: this.data.category,
           },
         });
       } else {
@@ -289,6 +298,7 @@ Page({
             imageFileID,
             ingredients: processedIngredients,
             ratios,
+            category: this.data.category,
           },
         });
       }

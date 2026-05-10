@@ -145,6 +145,39 @@
   padding: 4rpx 8rpx;
 }
 
+/* 菜品分组展示 */
+.dish-group {
+  margin-bottom: 8rpx;
+  width: 100%;
+}
+
+.dish-group:last-child {
+  margin-bottom: 0;
+}
+
+.dish-group-label {
+  display: block;
+  font-size: 20rpx;
+  font-weight: bold;
+  margin-bottom: 4rpx;
+  color: #666;
+}
+
+.student-group .dish-group-label {
+  color: #1976D2;
+}
+
+.teacher-group .dish-group-label {
+  color: #E65100;
+}
+
+.dish-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4rpx;
+  justify-content: center;
+}
+
 .dish-tag {
   font-size: 22rpx;
   color: #333;
@@ -153,6 +186,16 @@
   border-radius: 12rpx;
   margin: 2rpx 0;
   display: inline-block;
+}
+
+.student-tag {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+.teacher-tag {
+  background: #FFF3E0;
+  color: #E65100;
 }
 
 .no-dish {
