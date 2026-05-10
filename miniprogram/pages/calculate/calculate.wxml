@@ -70,9 +70,9 @@
         bindtap="switchDateTab"
       >
         <text class="tab-text">{{item.label}}</text>
-        <!-- 菜品数量徽标 -->
-        <view wx:if="{{item.dishCount > 0}}" class="tab-badge">{{item.dishCount > 9 ? 'N' : item.dishCount}}</view>
-        <!-- 未选菜品小红点 -->
+        <!-- 已选菜品小绿点 -->
+        <view wx:if="{{item.dishCount > 0}}" class="tab-badge"></view>
+        <!-- 未选菜品小黄点 -->
         <view wx:elif="{{item.dishCount === 0}}" class="tab-dot"></view>
       </view>
     </scroll-view>
@@ -84,7 +84,7 @@
         bindtap="switchSubTab"
         data-tab="student"
       >
-        <text>🎒 学生菜品</text>
+        <text class="sub-tab-text">🎒 学生菜品</text>
         <view wx:if="{{studentDishCount > 0}}" class="sub-badge">{{studentDishCount}}</view>
       </view>
       <view
@@ -92,7 +92,7 @@
         bindtap="switchSubTab"
         data-tab="teacher"
       >
-        <text>👨‍🏫 老师菜品</text>
+        <text class="sub-tab-text">👨‍🏫 老师菜品</text>
         <view wx:if="{{teacherDishCount > 0}}" class="sub-badge">{{teacherDishCount}}</view>
       </view>
     </view>
