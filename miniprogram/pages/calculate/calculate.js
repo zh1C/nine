@@ -48,6 +48,10 @@ Page({
     } finally {
       this.setData({ pageLoading: false });
     }
+    // 数据加载完成后尝试恢复草稿
+    if (!this.data.loadError) {
+      this.tryRestoreDraft();
+    }
   },
 
   // 重新加载
@@ -137,6 +141,7 @@ Page({
     this.refreshCalendarSelection();
     this.buildDateTabList();
     this.updateCurrentCategoryView();
+    this.saveDraft();
   },
 
   // 判断当前是否有已配置菜品
@@ -161,6 +166,7 @@ Page({
     this.refreshCalendarSelection();
     this.buildDateTabList();
     this.updateCurrentCategoryView();
+    this.saveDraft();
   },
 
   // 快捷选择：本周剩余
@@ -354,6 +360,7 @@ Page({
     });
     this.buildDateTabList();
     this.updateCurrentCategoryView();
+    this.saveDraft();
   },
 
   removeDailyDish(e) {
@@ -368,6 +375,7 @@ Page({
     this.setData({ dailyDishes: updatedDailyDishes });
     this.buildDateTabList();
     this.updateCurrentCategoryView();
+    this.saveDraft();
   },
 
   // ========== 计算逻辑 ==========
@@ -548,6 +556,123 @@ Page({
       dailyDishes, // 用于保存记录
     };
 
+    // 计算成功，清除草稿
+    this.clearDraft();
     wx.navigateTo({ url: "/pages/result/result" });
+  },
+
+  // ========== 草稿缓存 ==========
+  getDraftKey() {
+    const app = getApp();
+    const username = (app.globalData.userInfo && app.globalData.userInfo.username) || 'default';
+    return `calculate_draft_${username}`;
+  },
+
+  saveDraft() {
+    const { selectedDates, dailyDishes, dailySubTab, currentDateIdx } = this.data;
+    const key = this.getDraftKey();
+    // 没有选择日期时清除草稿
+    if (selectedDates.length === 0) {
+      wx.removeStorageSync(key);
+      return;
+    }
+    // 只保存 _id 列表，不保存完整菜品数据
+    const dailyDishIds = {};
+    Object.keys(dailyDishes).forEach(date => {
+      const dayData = dailyDishes[date] || {};
+      dailyDishIds[date] = {
+        student: (dayData.student || []).map(d => d._id),
+        teacher: (dayData.teacher || []).map(d => d._id),
+      };
+    });
+    wx.setStorageSync(key, {
+      selectedDates,
+      dailyDishIds,
+      dailySubTab,
+      currentDateIdx,
+      savedAt: Date.now(),
+    });
+  },
+
+  tryRestoreDraft() {
+    const { allDishes } = this.data;
+    // allDishes 加载失败时不恢复草稿
+    if (!allDishes || allDishes.length === 0) {
+      wx.showToast({ title: '菜品数据未加载，草稿恢复失败', icon: 'none' });
+      return;
+    }
+
+    const key = this.getDraftKey();
+    const draft = wx.getStorageSync(key);
+    if (!draft || !draft.selectedDates || draft.selectedDates.length === 0) return;
+
+    // 7天过期自动清除
+    const expireMs = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - draft.savedAt > expireMs) {
+      wx.removeStorageSync(key);
+      return;
+    }
+
+    wx.showModal({
+      title: '恢复配料草稿',
+      content: '检测到上次未完成的配料选择，是否继续？',
+      confirmText: '继续',
+      cancelText: '重新开始',
+      success: (res) => {
+        if (res.confirm) {
+          // 用 allDishes 构建 ID -> 菜品 的映射
+          const dishMap = {};
+          allDishes.forEach(d => { dishMap[d._id] = d; });
+
+          // 根据 _id 列表还原完整菜品数据
+          const dailyDishes = {};
+          const dailyDishIds = draft.dailyDishIds || {};
+          Object.keys(dailyDishIds).forEach(date => {
+            const dayIds = dailyDishIds[date] || {};
+            dailyDishes[date] = {
+              student: (dayIds.student || []).map(id => {
+                const d = dishMap[id];
+                if (!d) return null;
+                return {
+                  _id: d._id,
+                  name: d.name,
+                  imageFileID: d.imageFileID || '',
+                  ingredients: d.ingredients || [],
+                  ratios: d.ratios || {},
+                };
+              }).filter(Boolean),
+              teacher: (dayIds.teacher || []).map(id => {
+                const d = dishMap[id];
+                if (!d) return null;
+                return {
+                  _id: d._id,
+                  name: d.name,
+                  imageFileID: d.imageFileID || '',
+                  ingredients: d.ingredients || [],
+                  ratios: d.ratios || {},
+                };
+              }).filter(Boolean),
+            };
+          });
+
+          this.setData({
+            selectedDates: draft.selectedDates,
+            dailyDishes,
+            dailySubTab: draft.dailySubTab || 'student',
+            currentDateIdx: draft.currentDateIdx || 0,
+          });
+          this.refreshCalendarSelection();
+          this.buildDateTabList();
+          this.updateCurrentCategoryView();
+        } else {
+          wx.removeStorageSync(key);
+        }
+      },
+    });
+  },
+
+  clearDraft() {
+    const key = this.getDraftKey();
+    wx.removeStorageSync(key);
   },
 });
