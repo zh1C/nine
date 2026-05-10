@@ -584,6 +584,11 @@
   text-align: center;
 }
 
+.dit-reuse {
+  width: 60rpx;
+  text-align: center;
+}
+
 /* 园区用量区域 */
 .detail-gd {
   border-bottom: 1rpx solid #f0f0f0;
@@ -656,6 +661,11 @@
 .gd-cell-adv {
   font-size: 20rpx;
   margin-left: 4rpx;
+}
+
+.gd-cell-reuse {
+  font-size: 20rpx;
+  margin-left: 2rpx;
 }
 
 /* 关闭按钮 */

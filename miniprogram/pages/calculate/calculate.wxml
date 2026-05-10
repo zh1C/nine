@@ -175,12 +175,14 @@
             <text class="dit-unit">单位</text>
             <text class="dit-type">类型</text>
             <text class="dit-adv">提前</text>
+            <text class="dit-reuse">重复</text>
           </view>
           <view wx:for="{{detailIngredients}}" wx:key="index" class="dit-row">
             <text class="dit-name">{{item.name}}</text>
             <text class="dit-unit">{{item.unit}}</text>
             <text class="dit-type">{{item.type}}</text>
             <text class="dit-adv">{{item.advance ? '🚚' : '-'}}</text>
+            <text class="dit-reuse">{{item.reuse ? '🔄' : '-'}}</text>
           </view>
         </view>
 
@@ -198,6 +200,7 @@
               <text class="gd-cell-name">{{ing.name}}</text>
               <text class="gd-cell-val">{{item.ratios[ii] || '-'}} {{ing.unit}}</text>
               <text class="gd-cell-adv" wx:if="{{ing.advance}}">🚚</text>
+              <text class="gd-cell-reuse" wx:if="{{ing.reuse}}">🔄</text>
             </view>
           </view>
         </view>

@@ -522,10 +522,18 @@ Page({
                 name: ing.name,
                 unit: ing.unit,
                 type: ing.type || "蔬菜",
+                reuse: ing.reuse || false,
                 amount: 0,
               };
             }
-            resultMap[targetDate][garden.gardenId][key].amount += amount;
+            if (ing.reuse) {
+              // 重复利用：取最大值
+              resultMap[targetDate][garden.gardenId][key].amount =
+                Math.max(resultMap[targetDate][garden.gardenId][key].amount, amount);
+            } else {
+              // 默认：累加
+              resultMap[targetDate][garden.gardenId][key].amount += amount;
+            }
           }
         }
       }

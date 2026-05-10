@@ -140,7 +140,14 @@
 }
 
 .col-advance {
-  width: 100rpx;
+  width: 80rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.col-reuse {
+  width: 80rpx;
   text-align: center;
   font-size: 24rpx;
   color: #666;
@@ -204,7 +211,15 @@
 
 /* 提前送货复选框 */
 .advance-check {
-  width: 100rpx;
+  width: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 重复利用复选框 */
+.reuse-check {
+  width: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -371,6 +386,13 @@
 
 .advance-tag {
   margin-left: 8rpx;
+  font-size: 24rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+}
+
+.reuse-tag {
+  margin-left: 4rpx;
   font-size: 24rpx;
   height: 64rpx;
   line-height: 64rpx;

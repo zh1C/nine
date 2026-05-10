@@ -61,7 +61,8 @@
       <text class="col-name">配料名</text>
       <text class="col-unit">单位</text>
       <text class="col-type">类型</text>
-      <text class="col-advance">提前送货</text>
+      <text class="col-advance">提前</text>
+      <text class="col-reuse">重复</text>
       <text class="col-action">操作</text>
     </view>
 
@@ -94,6 +95,11 @@
       <view class="advance-check" data-idx="{{index}}" bindtap="toggleAdvance">
         <view class="checkbox {{item.advance ? 'checked' : ''}}">
           <text wx:if="{{item.advance}}">✓</text>
+        </view>
+      </view>
+      <view class="reuse-check" data-idx="{{index}}" bindtap="toggleReuse">
+        <view class="checkbox {{item.reuse ? 'checked' : ''}}">
+          <text wx:if="{{item.reuse}}">✓</text>
         </view>
       </view>
       <view class="remove-btn" data-idx="{{index}}" bindtap="removeIngredient">✕</view>
@@ -138,6 +144,7 @@
           />
           <text class="ratio-unit">{{ing.unit}}</text>
           <text class="advance-tag" wx:if="{{ing.advance}}">🚚</text>
+          <text class="reuse-tag" wx:if="{{ing.reuse}}">🔄</text>
         </view>
       </view>
     </view>

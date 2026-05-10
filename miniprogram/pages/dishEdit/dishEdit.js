@@ -37,7 +37,7 @@ Page({
     } else {
       wx.setNavigationBarTitle({ title: "新增菜品" });
       this.setData({
-        ingredients: [{ name: "", unit: "kg", type: "蔬菜", advance: false }],
+        ingredients: [{ name: "", unit: "kg", type: "蔬菜", advance: false, reuse: false }],
         category: options.category || "student",
       });
       this.loadGardens();
@@ -102,8 +102,9 @@ Page({
                 unit: i.unit || "kg",
                 type: i.type || "蔬菜",
                 advance: i.advance || false,
+                reuse: i.reuse || false,
               }))
-            : [{ name: "", unit: "kg", type: "蔬菜", advance: false }];
+            : [{ name: "", unit: "kg", type: "蔬菜", advance: false, reuse: false }];
 
         this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients, category: dish.category || "student" });
         await this.loadGardens(dish.ratios || {});
@@ -151,8 +152,14 @@ Page({
     this.setData({ [key]: !this.data.ingredients[idx].advance });
   },
 
+  toggleReuse(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const key = `ingredients[${idx}].reuse`;
+    this.setData({ [key]: !this.data.ingredients[idx].reuse });
+  },
+
   addIngredient() {
-    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", type: "蔬菜", advance: false }];
+    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", type: "蔬菜", advance: false, reuse: false }];
     // 所有园区比例数组同步新增一个空位
     const gardens = this.data.gardens.map((g) => ({
       ...g,
@@ -268,6 +275,7 @@ Page({
       unit: item.unit,
       type: item.type || "蔬菜",
       advance: item.advance || false,
+      reuse: item.reuse || false,
     }));
 
     this.setData({ loading: true });
