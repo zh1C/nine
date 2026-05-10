@@ -136,6 +136,44 @@ Page({
     }
   },
 
+  // ========== 修改记录 ==========
+  async editRecord(e) {
+    const recordId = e.currentTarget.dataset.id;
+    const app = getApp();
+    const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
+
+    wx.showLoading({ title: "加载中..." });
+
+    try {
+      const res = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "getRecordDetail",
+          recordId,
+          username,
+        },
+      });
+
+      wx.hideLoading();
+
+      if (res.result.success) {
+        const record = res.result.data;
+        // 存入全局，跳转到 calculate 页面恢复选择
+        app.globalData.editRecord = {
+          selectedDates: record.selectedDates,
+          summary: record.summary,
+        };
+        wx.navigateTo({ url: "/pages/calculate/calculate?from=history" });
+      } else {
+        wx.showToast({ title: res.result.errMsg || "加载失败", icon: "none" });
+      }
+    } catch (err) {
+      wx.hideLoading();
+      console.error(err);
+      wx.showToast({ title: "加载失败", icon: "none" });
+    }
+  },
+
   // ========== 删除记录 ==========
   deleteRecord(e) {
     const recordId = e.currentTarget.dataset.id;

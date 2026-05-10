@@ -37,6 +37,9 @@
         <view class="record-action-btn view-btn" bindtap="viewRecord" data-id="{{item._id}}">
           <text>查看</text>
         </view>
+        <view class="record-action-btn edit-btn" bindtap="editRecord" data-id="{{item._id}}">
+          <text>修改</text>
+        </view>
         <view class="record-action-btn delete-btn" bindtap="deleteRecord" data-id="{{item._id}}">
           <text>删除</text>
         </view>

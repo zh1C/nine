@@ -37,7 +37,8 @@ Page({
     detailIngExpanded: false,
   },
 
-  async onLoad() {
+  async onLoad(options) {
+    this._fromHistory = options && options.from === 'history';
     const now = new Date();
     this.setData({
       currentYear: now.getFullYear(),
@@ -55,9 +56,13 @@ Page({
     } finally {
       this.setData({ pageLoading: false });
     }
-    // 数据加载完成后尝试恢复草稿
+    // 数据加载完成后恢复
     if (!this.data.loadError) {
-      this.tryRestoreDraft();
+      if (this._fromHistory) {
+        this.restoreFromHistory();
+      } else {
+        this.tryRestoreDraft();
+      }
     }
   },
 
@@ -634,6 +639,92 @@ Page({
     // 计算成功，清除草稿
     this.clearDraft();
     wx.navigateTo({ url: "/pages/result/result" });
+  },
+
+  // ========== 从历史记录恢复 ==========
+  restoreFromHistory() {
+    const app = getApp();
+    const editData = app.globalData.editRecord;
+    if (!editData || !editData.selectedDates || editData.selectedDates.length === 0) {
+      return;
+    }
+
+    const { allDishes } = this.data;
+    if (!allDishes || allDishes.length === 0) {
+      return;
+    }
+
+    const { selectedDates, summary } = editData;
+    const summaryData = (summary && summary.data) || {};
+
+    // 根据 summary 中的菜品名 + 类型匹配 allDishes 恢复 dailyDishes
+    const dishMap = {};
+    allDishes.forEach(d => {
+      const key = `${d.name}_${d.category || 'student'}`;
+      dishMap[key] = d;
+    });
+
+    const dailyDishes = {};
+    selectedDates.forEach(date => {
+      const dateData = summaryData[date] || {};
+      const studentNames = new Set();
+      const teacherNames = new Set();
+
+      // 遍历所有园区收集菜品名（去重）
+      Object.values(dateData).forEach(gardenData => {
+        (gardenData.student || []).forEach(name => studentNames.add(name));
+        (gardenData.teacher || []).forEach(name => teacherNames.add(name));
+      });
+
+      // 按名称+类型匹配，未匹配的跳过
+      const studentDishes = [];
+      studentNames.forEach(name => {
+        const d = dishMap[`${name}_student`];
+        if (d) {
+          studentDishes.push({
+            _id: d._id,
+            name: d.name,
+            imageFileID: d.imageFileID || '',
+            ingredients: d.ingredients || [],
+            ratios: d.ratios || {},
+          });
+        }
+      });
+
+      const teacherDishes = [];
+      teacherNames.forEach(name => {
+        const d = dishMap[`${name}_teacher`];
+        if (d) {
+          teacherDishes.push({
+            _id: d._id,
+            name: d.name,
+            imageFileID: d.imageFileID || '',
+            ingredients: d.ingredients || [],
+            ratios: d.ratios || {},
+          });
+        }
+      });
+
+      dailyDishes[date] = { student: studentDishes, teacher: teacherDishes };
+    });
+
+    // 将日历切换到第一个选中日期所在月份
+    const firstDate = new Date(selectedDates[0]);
+    this.setData({
+      selectedDates,
+      dailyDishes,
+      currentYear: firstDate.getFullYear(),
+      currentMonth: firstDate.getMonth() + 1,
+      currentDateIdx: 0,
+      dailySubTab: 'student',
+    });
+    this.generateCalendar();
+    this.refreshCalendarSelection();
+    this.buildDateTabList();
+    this.updateCurrentCategoryView();
+
+    // 清除全局数据
+    app.globalData.editRecord = null;
   },
 
   // ========== 草稿缓存 ==========

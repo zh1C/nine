@@ -108,6 +108,11 @@
   border-right: 1rpx solid #f0f0f0;
 }
 
+.edit-btn {
+  color: #1976D2;
+  border-right: 1rpx solid #f0f0f0;
+}
+
 .delete-btn {
   color: #F44336;
 }
