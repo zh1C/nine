@@ -281,15 +281,45 @@
   font-size: 32rpx;
 }
 
+.dish-item-text {
+  display: flex;
+  flex-direction: column;
+}
+
 .dish-item-name {
   font-size: 28rpx;
   color: #333;
 }
 
+.dish-item-summary {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.dish-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.dish-detail-btn {
+  font-size: 22rpx;
+  color: #4CAF50;
+  border: 1rpx solid #4CAF50;
+  border-radius: 8rpx;
+  padding: 4rpx 14rpx;
+}
+
+.dish-detail-btn:active {
+  opacity: 0.7;
+}
+
 .dish-item-remove {
   color: #FF5252;
   font-size: 28rpx;
-  padding: 8rpx 16rpx;
+  padding: 8rpx 12rpx;
 }
 
 .empty-daily {
@@ -397,4 +427,248 @@
 
 .retry-btn:active {
   opacity: 0.7;
+}
+
+/* ========== 配料详情弹窗 ========== */
+.detail-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.detail-panel {
+  width: 100%;
+  max-height: 75vh;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 0 24rpx calc(30rpx + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-handle {
+  width: 60rpx;
+  height: 6rpx;
+  background: #ddd;
+  border-radius: 3rpx;
+  margin: 16rpx auto 12rpx;
+}
+
+/* 头部 */
+.detail-hd {
+  display: flex;
+  align-items: center;
+  padding: 10rpx 0 14rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-img {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 10rpx;
+  margin-right: 14rpx;
+  flex-shrink: 0;
+}
+
+.detail-img-ph {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 10rpx;
+  margin-right: 14rpx;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  flex-shrink: 0;
+}
+
+.detail-name {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.detail-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  background: #e8f5e9;
+  color: #388e3c;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+/* 滚动体 */
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 配料属性折叠栏 */
+.detail-ing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-ing-title {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.detail-ing-arrow {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 配料属性表格 */
+.detail-ing-table {
+  padding: 8rpx 0 12rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.dit-hd {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 0;
+  border-bottom: 1rpx solid #e8e8e8;
+}
+
+.dit-hd text {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.dit-row {
+  display: flex;
+  align-items: center;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid #f8f8f8;
+}
+
+.dit-row:last-child {
+  border-bottom: none;
+}
+
+.dit-row text {
+  font-size: 24rpx;
+  color: #333;
+}
+
+.dit-name {
+  flex: 3;
+}
+
+.dit-unit {
+  flex: 2;
+  color: #666;
+}
+
+.dit-type {
+  flex: 2;
+  color: #666;
+}
+
+.dit-adv {
+  width: 60rpx;
+  text-align: center;
+}
+
+/* 园区用量区域 */
+.detail-gd {
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.detail-gd:last-child {
+  border-bottom: none;
+}
+
+.detail-gd-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14rpx 0;
+}
+
+.detail-gd-name {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.detail-gd-st {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+}
+
+.gd-ok {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.gd-warn {
+  background: #fff8e1;
+  color: #f57c00;
+}
+
+/* 园区配料网格（两列） */
+.detail-gd-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0 0 10rpx;
+}
+
+.detail-gd-cell {
+  width: 50%;
+  display: flex;
+  align-items: center;
+  padding: 6rpx 0;
+  box-sizing: border-box;
+}
+
+.gd-cell-name {
+  font-size: 24rpx;
+  color: #666;
+  width: 120rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-cell-val {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
+  margin-left: 8rpx;
+}
+
+.gd-cell-adv {
+  font-size: 20rpx;
+  margin-left: 4rpx;
+}
+
+/* 关闭按钮 */
+.detail-close {
+  margin-top: 16rpx;
+  text-align: center;
+  padding: 16rpx 0;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.detail-close:active {
+  background: #e8e8e8;
 }

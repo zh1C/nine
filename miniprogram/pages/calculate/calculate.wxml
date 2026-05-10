@@ -113,9 +113,15 @@
               mode="aspectFill"
             />
             <view wx:else class="dish-item-placeholder">🍽️</view>
-            <text class="dish-item-name">{{item.name}}</text>
+            <view class="dish-item-text">
+              <text class="dish-item-name">{{item.name}}</text>
+              <text class="dish-item-summary">{{item.summary}}</text>
+            </view>
           </view>
-          <view class="dish-item-remove" data-idx="{{index}}" bindtap="removeDailyDish">✕</view>
+          <view class="dish-item-actions">
+            <view class="dish-detail-btn" data-idx="{{index}}" bindtap="showDishDetail">详情</view>
+            <view class="dish-item-remove" data-idx="{{index}}" bindtap="removeDailyDish">✕</view>
+          </view>
         </view>
       </block>
       <view wx:else class="empty-daily">
@@ -143,4 +149,61 @@
     bind:add="onPickerAdd"
     bind:close="onPickerClose"
   />
+
+  <!-- 配料详情弹窗 -->
+  <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="detail-panel" catchtap="preventBubble">
+      <view class="detail-handle"></view>
+
+      <!-- 头部 -->
+      <view class="detail-hd">
+        <image wx:if="{{detailDish.imageFileID}}" class="detail-img" src="{{detailDish.imageFileID}}" mode="aspectFill" />
+        <view wx:else class="detail-img-ph">🍽️</view>
+        <text class="detail-name">{{detailDish.name}}</text>
+        <view class="detail-tag">{{detailDish.categoryLabel}}</view>
+      </view>
+
+      <scroll-view class="detail-body" scroll-y>
+        <!-- 配料属性（默认折叠） -->
+        <view class="detail-ing-bar" bindtap="toggleDetailIng">
+          <text class="detail-ing-title">配料属性（{{detailIngredients.length}}种）</text>
+          <text class="detail-ing-arrow">{{detailIngExpanded ? '▲' : '▼'}}</text>
+        </view>
+        <view class="detail-ing-table" wx:if="{{detailIngExpanded}}">
+          <view class="dit-hd">
+            <text class="dit-name">配料名</text>
+            <text class="dit-unit">单位</text>
+            <text class="dit-type">类型</text>
+            <text class="dit-adv">提前</text>
+          </view>
+          <view wx:for="{{detailIngredients}}" wx:key="index" class="dit-row">
+            <text class="dit-name">{{item.name}}</text>
+            <text class="dit-unit">{{item.unit}}</text>
+            <text class="dit-type">{{item.type}}</text>
+            <text class="dit-adv">{{item.advance ? '🚚' : '-'}}</text>
+          </view>
+        </view>
+
+        <!-- 各园区用量（默认全部展开） -->
+        <view wx:for="{{detailGardens}}" wx:key="gardenId" class="detail-gd">
+          <view class="detail-gd-hd">
+            <text class="detail-gd-name">{{item.name}}</text>
+            <view class="detail-gd-st {{item.filled ? 'gd-ok' : 'gd-warn'}}">
+              <text>{{item.filled ? '已配' : '未配'}}</text>
+            </view>
+          </view>
+          <!-- 已配园区：两列紧凑展示 -->
+          <view class="detail-gd-grid" wx:if="{{item.filled}}">
+            <view wx:for="{{detailIngredients}}" wx:for-item="ing" wx:for-index="ii" wx:key="ii" class="detail-gd-cell">
+              <text class="gd-cell-name">{{ing.name}}</text>
+              <text class="gd-cell-val">{{item.ratios[ii] || '-'}} {{ing.unit}}</text>
+              <text class="gd-cell-adv" wx:if="{{ing.advance}}">🚚</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="detail-close" bindtap="closeDetail">关闭</view>
+    </view>
+  </view>
 </view>

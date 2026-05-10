@@ -28,6 +28,13 @@ Page({
 
     pageLoading: true, // 页面级loading，两个请求都完成后才显示内容
     loadError: false, // 加载是否出错
+
+    // 配料详情弹窗
+    showDetail: false,
+    detailDish: {},
+    detailIngredients: [],
+    detailGardens: [],
+    detailIngExpanded: false,
   },
 
   async onLoad() {
@@ -250,7 +257,7 @@ Page({
 
   // 更新当前日期+类型的视图数据
   updateCurrentCategoryView() {
-    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes } = this.data;
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes, gardens } = this.data;
     if (selectedDates.length === 0) {
       this.setData({ currentCategoryDishes: [], studentDishCount: 0, teacherDishCount: 0, filteredDishes: [] });
       return;
@@ -259,7 +266,23 @@ Page({
     const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
     const studentDishes = dayData.student || [];
     const teacherDishes = dayData.teacher || [];
-    const currentCategoryDishes = dailySubTab === "student" ? studentDishes : teacherDishes;
+    const rawDishes = dailySubTab === "student" ? studentDishes : teacherDishes;
+
+    // 为每道菜生成摘要
+    const currentCategoryDishes = rawDishes.map(dish => {
+      const ingCount = (dish.ingredients || []).length;
+      let configuredCount = 0;
+      gardens.forEach(g => {
+        const ratioArr = (dish.ratios || {})[String(g.gardenId)] || [];
+        if (ratioArr.some(r => r !== undefined && r !== null && r !== '' && parseFloat(r) > 0)) {
+          configuredCount++;
+        }
+      });
+      return {
+        ...dish,
+        summary: `${ingCount}种配料 · ${configuredCount}/${gardens.length}园区已配`,
+      };
+    });
 
     // 过滤allDishes：只显示对应category的菜品
     const filteredDishes = allDishes.filter(d => (d.category || "student") === dailySubTab);
@@ -377,6 +400,50 @@ Page({
     this.updateCurrentCategoryView();
     this.saveDraft();
   },
+
+  // ========== 配料详情弹窗 ==========
+  showDishDetail(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const dish = this.data.currentCategoryDishes[idx];
+    if (!dish) return;
+    const gardens = this.data.gardens;
+    const dailySubTab = this.data.dailySubTab;
+
+    // 构建园区展示数据（默认全部展开）
+    const detailGardens = gardens.map(g => {
+      const key = String(g.gardenId);
+      const ratioArr = (dish.ratios || {})[key] || [];
+      const filled = ratioArr.some(r => r !== undefined && r !== null && r !== '' && parseFloat(r) > 0);
+      return {
+        gardenId: g.gardenId,
+        name: g.name,
+        filled,
+        ratios: ratioArr,
+      };
+    });
+
+    this.setData({
+      showDetail: true,
+      detailIngExpanded: false,
+      detailDish: {
+        name: dish.name,
+        imageFileID: dish.imageFileID || '',
+        categoryLabel: dailySubTab === 'student' ? '学生餐' : '老师餐',
+      },
+      detailIngredients: dish.ingredients || [],
+      detailGardens,
+    });
+  },
+
+  toggleDetailIng() {
+    this.setData({ detailIngExpanded: !this.data.detailIngExpanded });
+  },
+
+  closeDetail() {
+    this.setData({ showDetail: false });
+  },
+
+  preventBubble() {},
 
   // ========== 计算逻辑 ==========
   handleCalculate() {
