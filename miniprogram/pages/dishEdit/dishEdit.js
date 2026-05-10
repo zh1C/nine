@@ -9,7 +9,7 @@ Page({
     ingredients: [],
     gardens: [],
     unitOptions: ["kg", "g", "个", "ml", "L", "根", "片", "块", "勺"],
-    typeOptions: ["肉类", "蔬菜", "海鲜", "豆制品", "主食", "调料", "其他"],
+    typeOptions: ["肉类", "蔬菜"],
     category: "student", // "student" | "teacher"
     loading: false,
   },
@@ -37,7 +37,7 @@ Page({
     } else {
       wx.setNavigationBarTitle({ title: "新增菜品" });
       this.setData({
-        ingredients: [{ name: "", unit: "kg", type: "其他", advance: false }],
+        ingredients: [{ name: "", unit: "kg", type: "蔬菜", advance: false }],
         category: options.category || "student",
       });
       this.loadGardens();
@@ -100,10 +100,10 @@ Page({
             ? dish.ingredients.map((i) => ({
                 name: i.name || "",
                 unit: i.unit || "kg",
-                type: i.type || "其他",
+                type: i.type || "蔬菜",
                 advance: i.advance || false,
               }))
-            : [{ name: "", unit: "kg", type: "其他", advance: false }];
+            : [{ name: "", unit: "kg", type: "蔬菜", advance: false }];
 
         this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients, category: dish.category || "student" });
         await this.loadGardens(dish.ratios || {});
@@ -152,7 +152,7 @@ Page({
   },
 
   addIngredient() {
-    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", type: "其他", advance: false }];
+    const ingredients = [...this.data.ingredients, { name: "", unit: "kg", type: "蔬菜", advance: false }];
     // 所有园区比例数组同步新增一个空位
     const gardens = this.data.gardens.map((g) => ({
       ...g,
@@ -266,7 +266,7 @@ Page({
     const processedIngredients = validIngredients.map((item) => ({
       name: item.name.trim(),
       unit: item.unit,
-      type: item.type || "其他",
+      type: item.type || "蔬菜",
       advance: item.advance || false,
     }));
 

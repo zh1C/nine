@@ -407,7 +407,7 @@ Page({
     }
 
     // 类型排序权重
-    const typeOrder = { "肉类": 1, "海鲜": 2, "蔬菜": 3, "豆制品": 4, "主食": 5, "调料": 6, "其他": 7 };
+    const typeOrder = { "肉类": 1, "蔬菜": 2 };
 
     // 初始化结果结构: { date: { gardenId: { 'ingName_unit': amount } } }
     const resultMap = {};
@@ -435,7 +435,7 @@ Page({
             if (ratio === 0 || isNaN(ratio)) continue;
 
             const amount = 1 * ratio; // 默认菜品量=1
-            const key = `${ing.name}_${ing.unit}_${ing.type || "其他"}`;
+            const key = `${ing.name}_${ing.unit}`;
 
             // 提前送货逻辑
             let targetDate = date;
@@ -454,7 +454,7 @@ Page({
               resultMap[targetDate][garden.gardenId][key] = {
                 name: ing.name,
                 unit: ing.unit,
-                type: ing.type || "其他",
+                type: ing.type || "蔬菜",
                 amount: 0,
               };
             }
