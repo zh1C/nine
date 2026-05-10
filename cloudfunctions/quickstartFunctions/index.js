@@ -275,6 +275,41 @@ const getDishes = async (event) => {
   }
 };
 
+// 获取全部菜品（不分页，循环获取全部）
+const getAllDishes = async () => {
+  try {
+    const MAX_LIMIT = 300;
+    const countRes = await db.collection("dishes").count();
+    const total = countRes.total;
+
+    if (total === 0) {
+      return { success: true, data: { list: [], total: 0 } };
+    }
+
+    // 并行分批获取
+    const batchTimes = Math.ceil(total / MAX_LIMIT);
+    const tasks = [];
+    for (let i = 0; i < batchTimes; i++) {
+      tasks.push(
+        db.collection("dishes")
+          .skip(i * MAX_LIMIT)
+          .limit(MAX_LIMIT)
+          .orderBy("createTime", "desc")
+          .get()
+      );
+    }
+    const results = await Promise.all(tasks);
+    let list = [];
+    results.forEach(res => {
+      list = list.concat(res.data);
+    });
+
+    return { success: true, data: { list, total } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "获取全部菜品失败" };
+  }
+};
+
 // 获取单个菜品详情
 const getDishDetail = async (event) => {
   try {
@@ -596,6 +631,8 @@ exports.main = async (event, context) => {
       return await addDish(event);
     case "getDishes":
       return await getDishes(event);
+    case "getAllDishes":
+      return await getAllDishes(event);
     case "getDishDetail":
       return await getDishDetail(event);
     case "updateDish":

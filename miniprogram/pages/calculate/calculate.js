@@ -298,7 +298,7 @@ Page({
   async loadAllDishes() {
     const res = await wx.cloud.callFunction({
       name: "quickstartFunctions",
-      data: { type: "getDishes", page: 1, pageSize: 200 },
+      data: { type: "getAllDishes" },
     });
     if (res.result.success) {
       this.setData({ allDishes: res.result.data.list });
