@@ -1,4 +1,92 @@
 /* pages/index/index.wxss */
+
+/* 烟花覆盖层 */
+.firework-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+}
+
+.firework-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.firework-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  animation: textBounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.firework-message {
+  display: block;
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow:
+    0 0 10rpx rgba(255, 215, 0, 0.8),
+    0 0 30rpx rgba(255, 215, 0, 0.5),
+    0 0 60rpx rgba(255, 165, 0, 0.3);
+  margin-bottom: 20rpx;
+  animation: textGlow 1.5s ease-in-out infinite alternate;
+}
+
+.firework-tip {
+  display: block;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 40rpx;
+  animation: tipFadeIn 2s ease-in forwards;
+  opacity: 0;
+}
+
+/* 文字弹入动画 */
+@keyframes textBounceIn {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* 发光脉冲动画 */
+@keyframes textGlow {
+  0% {
+    text-shadow:
+      0 0 10rpx rgba(255, 215, 0, 0.6),
+      0 0 20rpx rgba(255, 215, 0, 0.3),
+      0 0 40rpx rgba(255, 165, 0, 0.1);
+  }
+  100% {
+    text-shadow:
+      0 0 20rpx rgba(255, 215, 0, 1),
+      0 0 50rpx rgba(255, 215, 0, 0.6),
+      0 0 100rpx rgba(255, 165, 0, 0.4),
+      0 0 150rpx rgba(255, 69, 0, 0.2);
+  }
+}
+
+/* 提示文字渐入 */
+@keyframes tipFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 .index-page {
   min-height: 100vh;
   padding: 0 30rpx 30rpx;

@@ -606,6 +606,55 @@ const deleteRecord = async (event) => {
   }
 };
 
+// ============ 庆祝模块 ============
+
+// 检查是否有庆祝动画需要播放
+const checkCelebration = async (event) => {
+  try {
+    const { username } = event;
+    if (!username) return { success: true, data: null };
+
+    // 获取今天日期（东八区）
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const cnNow = new Date(now.getTime() + offset + 8 * 3600000);
+    const today = `${cnNow.getFullYear()}-${String(cnNow.getMonth() + 1).padStart(2, '0')}-${String(cnNow.getDate()).padStart(2, '0')}`;
+
+    const res = await db.collection("celebrations")
+      .where({
+        username,
+        playDate: today,
+        remainTimes: _.gt(0),
+      })
+      .limit(1)
+      .get();
+
+    if (res.data.length === 0) {
+      return { success: true, data: null };
+    }
+
+    return { success: true, data: res.data[0] };
+  } catch (e) {
+    // 查询失败不影响登录
+    return { success: true, data: null };
+  }
+};
+
+// 播放完成后扣减次数
+const consumeCelebration = async (event) => {
+  try {
+    const { recordId } = event;
+    if (!recordId) return { success: false, errMsg: "参数缺失" };
+
+    await db.collection("celebrations").doc(recordId).update({
+      data: { remainTimes: _.inc(-1) },
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "更新失败" };
+  }
+};
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   switch (event.type) {
@@ -657,6 +706,11 @@ exports.main = async (event, context) => {
       return await getRecordDetail(event);
     case "deleteRecord":
       return await deleteRecord(event);
+    // 庆祝模块
+    case "checkCelebration":
+      return await checkCelebration(event);
+    case "consumeCelebration":
+      return await consumeCelebration(event);
     default:
       return { success: false, errMsg: "未知的操作类型" };
   }

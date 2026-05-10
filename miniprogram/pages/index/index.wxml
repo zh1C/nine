@@ -1,4 +1,14 @@
 <!--pages/index/index.wxml-->
+
+<!-- 烟花庆祝覆盖层 -->
+<view class="firework-overlay" wx:if="{{showFirework}}" bindtap="closeFirework">
+  <canvas type="2d" id="fireworkCanvas" class="firework-canvas"></canvas>
+  <view class="firework-text">
+    <text class="firework-message">{{celebrationMessage}}</text>
+    <text class="firework-tip">点击任意位置关闭</text>
+  </view>
+</view>
+
 <view class="index-page">
   <view class="header">
     <view class="header-left">
