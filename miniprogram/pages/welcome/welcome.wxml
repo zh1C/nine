@@ -1,0 +1,56 @@
+<!--pages/welcome/welcome.wxml-->
+<view class="welcome-page">
+  <!-- 顶部品牌区 -->
+  <view class="welcome-header">
+    <view class="logo">🍳</view>
+    <text class="title">9号菜单</text>
+  </view>
+
+  <!-- 功能介绍卡片区 -->
+  <view class="feature-section">
+    <text class="section-title">功能简介</text>
+    <view class="feature-list">
+      <view class="feature-item">
+        <view class="feature-icon">📊</view>
+        <view class="feature-info">
+          <text class="feature-name">配料计算</text>
+          <text class="feature-desc">选择日期和菜品，自动计算各园区配料用量</text>
+        </view>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon">🥘</view>
+        <view class="feature-info">
+          <text class="feature-name">菜品管理</text>
+          <text class="feature-desc">录入和管理菜品信息及配料比例</text>
+        </view>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon">📋</view>
+        <view class="feature-info">
+          <text class="feature-name">历史记录</text>
+          <text class="feature-desc">查看和复用已保存的配料记录</text>
+        </view>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon">🏢</view>
+        <view class="feature-info">
+          <text class="feature-name">园区管理</text>
+          <text class="feature-desc">管理多个园区的配置信息</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 使用说明 -->
+  <view class="notice-section">
+    <view class="notice-box">
+      <text class="notice-icon">💡</text>
+      <text class="notice-text">本系统仅限内部人员使用，暂未开放，请使用已分配的账号登录。如需开通账号，请联系管理员。</text>
+    </view>
+  </view>
+
+  <!-- 底部操作区 -->
+  <view class="welcome-footer">
+    <button class="login-btn" bindtap="goLogin">登录使用</button>
+  </view>
+</view>

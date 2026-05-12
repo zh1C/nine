@@ -9,6 +9,14 @@ Page({
 
     onLoad() { },
 
+    goBack() {
+        wx.navigateBack({
+            fail: () => {
+                wx.reLaunch({ url: '/pages/welcome/welcome' });
+            },
+        });
+    },
+
     onInputUsername(e) {
         const value = e.detail.value;
         this.setData({ username: value });
@@ -87,7 +95,7 @@ Page({
     onShareAppMessage() {
         return {
             title: "9号菜单",
-            path: "/pages/login/login",
+            path: "/pages/welcome/welcome",
         };
     },
 

@@ -1,0 +1,141 @@
+/* pages/welcome/welcome.wxss */
+.welcome-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 50rpx 40rpx 40rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #4CAF50 0%, #81C784 30%, #f5f5f5 70%);
+}
+
+.welcome-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 36rpx;
+}
+
+.logo {
+  font-size: 90rpx;
+  margin-bottom: 10rpx;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 功能介绍区 */
+.feature-section {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 30rpx rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.feature-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.feature-icon {
+  font-size: 44rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.feature-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4rpx;
+}
+
+.feature-desc {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 使用说明 */
+.notice-section {
+  margin-bottom: 0;
+}
+
+.notice-box {
+  display: flex;
+  align-items: flex-start;
+  background: #FFF8E1;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  border: 1rpx solid #FFE082;
+}
+
+.notice-icon {
+  font-size: 30rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.notice-text {
+  font-size: 24rpx;
+  color: #795548;
+  line-height: 1.5;
+}
+
+/* 底部操作区 */
+.welcome-footer {
+  margin-top: auto;
+  padding-top: 30rpx;
+}
+
+.login-btn {
+  width: 100%;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4CAF50 !important;
+  color: #fff !important;
+  border-radius: 46rpx;
+  font-size: 34rpx;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(76, 175, 80, 0.3);
+}
+
+.login-btn::after {
+  border: none;
+}

@@ -305,7 +305,7 @@ Page({
   checkLogin() {
     const app = getApp();
     if (!app.globalData.isLogin) {
-      wx.reLaunch({ url: "/pages/login/login" });
+      wx.reLaunch({ url: "/pages/welcome/welcome" });
       return;
     }
     const userInfo = app.globalData.userInfo;
@@ -448,7 +448,7 @@ Page({
   onShareAppMessage() {
     return {
       title: "9号菜单",
-      path: "/pages/login/login",
+      path: "/pages/welcome/welcome",
     };
   },
 });
