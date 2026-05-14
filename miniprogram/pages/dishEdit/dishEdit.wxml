@@ -151,7 +151,7 @@
   </view>
 
   <!-- 保存按钮 -->
-  <button class="save-btn" bindtap="handleSave" loading="{{loading}}">
-    保存菜品
+  <button class="save-btn" bindtap="handleSave" loading="{{loading}}" disabled="{{loading}}">
+    {{loading ? '保存中...' : '保存菜品'}}
   </button>
 </view>

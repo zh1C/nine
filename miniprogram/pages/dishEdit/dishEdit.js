@@ -107,6 +107,15 @@ Page({
 
         this.setData({ name: dish.name, imageFileID: dish.imageFileID || "", ingredients, category: dish.category || "student" });
         await this.loadGardens(dish.ratios || {});
+
+        // 保存原始快照，用于脏数据检测
+        this._originalData = {
+          name: dish.name,
+          category: dish.category || "student",
+          imageFileID: dish.imageFileID || "",
+          ingredients: JSON.stringify(ingredients),
+          ratios: JSON.stringify(dish.ratios || {}),
+        };
       }
     } catch (e) {
       wx.showToast({ title: "加载失败", icon: "none" });
@@ -226,8 +235,36 @@ Page({
     return uploadRes.fileID;
   },
 
+  // ========== 脏数据检测 ==========
+  _hasChanges() {
+    if (!this._originalData) return true; // 新增模式永远有变化
+    const { name, category, ingredients, gardens } = this.data;
+    if (name !== this._originalData.name) return true;
+    if (category !== this._originalData.category) return true;
+    if (this.data.imageTempPath) return true; // 换了新图
+    if (JSON.stringify(ingredients) !== this._originalData.ingredients) return true;
+    // 对比 ratios
+    const currentRatios = {};
+    const validIngredients = ingredients.filter((item) => item.name.trim());
+    for (const g of gardens) {
+      const hasValue = g.ratios.slice(0, validIngredients.length).some(
+        (r) => r !== "" && r !== null && r !== undefined
+      );
+      if (hasValue) {
+        currentRatios[String(g.gardenId)] = g.ratios
+          .slice(0, validIngredients.length)
+          .map((r) => parseFloat(r) || 0);
+      }
+    }
+    if (JSON.stringify(currentRatios) !== this._originalData.ratios) return true;
+    return false;
+  },
+
   // ========== 保存 ==========
   async handleSave() {
+    // 防重复点击
+    if (this.data.loading) return;
+
     const { name, ingredients, gardens, isEdit, dishId } = this.data;
 
     // 校验菜品名称
@@ -276,6 +313,12 @@ Page({
       advance: item.advance || false,
       reuse: item.reuse || false,
     }));
+
+    // 编辑模式下检测是否有修改
+    if (isEdit && !this._hasChanges()) {
+      wx.showToast({ title: "内容未修改", icon: "none" });
+      return;
+    }
 
     this.setData({ loading: true });
     wx.showLoading({ title: "保存中..." });
