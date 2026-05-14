@@ -41,14 +41,6 @@
     </view>
   </view>
 
-  <!-- 使用说明 -->
-  <view class="notice-section">
-    <view class="notice-box">
-      <text class="notice-icon">💡</text>
-      <text class="notice-text">本系统仅限内部人员使用，暂未开放，请使用已分配的账号登录。如需开通账号，请联系管理员。</text>
-    </view>
-  </view>
-
   <!-- 底部操作区 -->
   <view class="welcome-footer">
     <button class="login-btn" bindtap="goLogin">登录使用</button>
