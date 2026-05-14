@@ -21,18 +21,16 @@ Page({
     }
   },
 
-  // 权限校验
+  // 权限校验（所有已登录用户可访问）
   checkPermission() {
     const app = getApp();
     const userInfo = app.globalData.userInfo;
-    if (!userInfo || userInfo.role !== "admin") {
+    if (!userInfo) {
       wx.showModal({
-        title: "无权限",
-        content: "仅管理员可以访问此页面",
+        title: "未登录",
+        content: "请先登录",
         showCancel: false,
-        success: () => {
-          wx.navigateBack();
-        },
+        success: () => { wx.navigateBack(); },
       });
       return;
     }

@@ -324,9 +324,11 @@ Page({
 
   // ========== 菜品选择 ==========
   async loadAllDishes() {
+    const app = getApp();
+    const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
     const res = await wx.cloud.callFunction({
       name: "quickstartFunctions",
-      data: { type: "getAllDishes" },
+      data: { type: "getAllDishes", username },
     });
     if (res.result.success) {
       this.setData({ allDishes: res.result.data.list });
@@ -334,9 +336,11 @@ Page({
   },
 
   async loadGardens() {
+    const app = getApp();
+    const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
     const res = await wx.cloud.callFunction({
       name: "quickstartFunctions",
-      data: { type: "getGardens" },
+      data: { type: "getGardens", operatorUsername: username },
     });
     if (res.result.success) {
       this.setData({ gardens: res.result.data.list });

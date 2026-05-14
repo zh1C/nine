@@ -15,17 +15,15 @@ Page({
   },
 
   onLoad(options) {
-    // 权限校验：仅管理员可编辑菜品
+    // 校验登录
     const app = getApp();
     const userInfo = app.globalData.userInfo;
-    if (!userInfo || userInfo.role !== "admin") {
+    if (!userInfo) {
       wx.showModal({
-        title: "无权限",
-        content: "仅管理员可以编辑菜品",
+        title: "未登录",
+        content: "请先登录",
         showCancel: false,
-        success: () => {
-          wx.navigateBack();
-        },
+        success: () => { wx.navigateBack(); },
       });
       return;
     }
@@ -55,6 +53,7 @@ Page({
           operatorUsername: app.globalData.userInfo.username,
         },
       });
+      // 加载园区时使用 operatorUsername 实现数据隔离
 
       if (res.result.success) {
         const gardenList = res.result.data.list;
@@ -284,11 +283,15 @@ Page({
     try {
       const imageFileID = await this.uploadImage();
 
+      const app = getApp();
+      const username = app.globalData.userInfo.username;
+
       if (isEdit) {
         await wx.cloud.callFunction({
           name: "quickstartFunctions",
           data: {
             type: "updateDish",
+            username,
             dishId,
             name: name.trim(),
             imageFileID,
@@ -302,6 +305,7 @@ Page({
           name: "quickstartFunctions",
           data: {
             type: "addDish",
+            username,
             name: name.trim(),
             imageFileID,
             ingredients: processedIngredients,

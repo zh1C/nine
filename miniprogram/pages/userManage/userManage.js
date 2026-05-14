@@ -89,7 +89,7 @@ Page({
     const { username, nickname } = e.currentTarget.dataset;
     wx.showModal({
       title: "确认删除",
-      content: `确定要删除用户「${nickname}」吗？删除后不可恢复。`,
+      content: `确定要删除用户「${nickname}」吗？\n将同时删除该用户的所有菜品、园区、历史记录等数据，删除后不可恢复。`,
       confirmColor: "#d32f2f",
       success: async (res) => {
         if (res.confirm) {

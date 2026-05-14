@@ -184,7 +184,7 @@ const getUsers = async (event) => {
   }
 };
 
-// 删除用户（仅管理员）
+// 删除用户（仅管理员）—— 级联删除该用户的所有关联数据
 const deleteUser = async (event) => {
   try {
     const { operatorUsername, targetUsername } = event;
@@ -207,13 +207,97 @@ const deleteUser = async (event) => {
     if (targetRes.data[0].role === "admin") {
       return { success: false, errMsg: "不能删除管理员账号" };
     }
-    // 删除用户头像（如果有）
-    if (targetRes.data[0].avatar) {
-      await cloud.deleteFile({ fileList: [targetRes.data[0].avatar] });
+
+    const deleteSummary = { dishes: 0, gardens: 0, records: 0, celebrations: 0 };
+
+    // 1. 删除该用户的菜品（含图片清理）
+    try {
+      const MAX_LIMIT = 100;
+      let deleted = 0;
+      while (true) {
+        const dishBatch = await db.collection("dishes")
+          .where({ username: targetUsername })
+          .limit(MAX_LIMIT)
+          .field({ _id: true, imageFileID: true })
+          .get();
+        if (dishBatch.data.length === 0) break;
+        // 清理菜品图片
+        const imageFileIDs = dishBatch.data
+          .map(d => d.imageFileID)
+          .filter(Boolean);
+        if (imageFileIDs.length > 0) {
+          try { await cloud.deleteFile({ fileList: imageFileIDs }); } catch (e) { console.error("删除菜品图片失败:", e); }
+        }
+        // 批量删除菜品
+        const delRes = await db.collection("dishes")
+          .where({ username: targetUsername })
+          .limit(MAX_LIMIT)
+          .remove();
+        deleted += delRes.stats.removed;
+        if (dishBatch.data.length < MAX_LIMIT) break;
+      }
+      deleteSummary.dishes = deleted;
+    } catch (e) {
+      console.error("级联删除菜品失败:", e);
     }
-    // 删除用户
+
+    // 2. 删除该用户的园区
+    try {
+      let deleted = 0;
+      while (true) {
+        const delRes = await db.collection("gardens")
+          .where({ username: targetUsername })
+          .limit(100)
+          .remove();
+        deleted += delRes.stats.removed;
+        if (delRes.stats.removed < 100) break;
+      }
+      deleteSummary.gardens = deleted;
+    } catch (e) {
+      console.error("级联删除园区失败:", e);
+    }
+
+    // 3. 删除该用户的历史记录
+    try {
+      let deleted = 0;
+      while (true) {
+        const delRes = await db.collection("records")
+          .where({ username: targetUsername })
+          .limit(100)
+          .remove();
+        deleted += delRes.stats.removed;
+        if (delRes.stats.removed < 100) break;
+      }
+      deleteSummary.records = deleted;
+    } catch (e) {
+      console.error("级联删除历史记录失败:", e);
+    }
+
+    // 4. 删除该用户的庆祝记录
+    try {
+      let deleted = 0;
+      while (true) {
+        const delRes = await db.collection("celebrations")
+          .where({ username: targetUsername })
+          .limit(100)
+          .remove();
+        deleted += delRes.stats.removed;
+        if (delRes.stats.removed < 100) break;
+      }
+      deleteSummary.celebrations = deleted;
+    } catch (e) {
+      console.error("级联删除庆祝记录失败:", e);
+    }
+
+    // 5. 删除用户头像（如果有）
+    if (targetRes.data[0].avatar) {
+      try { await cloud.deleteFile({ fileList: [targetRes.data[0].avatar] }); } catch (e) { console.error("删除用户头像失败:", e); }
+    }
+
+    // 6. 最后删除用户记录
     await db.collection("users").where({ username: targetUsername }).remove();
-    return { success: true };
+
+    return { success: true, data: { deleteSummary } };
   } catch (e) {
     return { success: false, errMsg: e.message || "删除用户失败" };
   }
@@ -221,14 +305,18 @@ const deleteUser = async (event) => {
 
 // ============ 菜品模块 ============
 
-// 添加菜品
+// 添加菜品（写入 username 实现数据隔离）
 const addDish = async (event) => {
   try {
-    const { name, imageFileID, ingredients, ratios, category } = event;
+    const { name, imageFileID, ingredients, ratios, category, username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
     const wxContext = cloud.getWXContext();
     const res = await db.collection("dishes").add({
       data: {
         _openid: wxContext.OPENID,
+        username,
         name,
         imageFileID: imageFileID || "",
         ingredients: ingredients || [],
@@ -244,11 +332,15 @@ const addDish = async (event) => {
   }
 };
 
-// 获取菜品列表
+// 获取菜品列表（按 username 隔离）
 const getDishes = async (event) => {
   try {
-    const { keyword, page = 1, pageSize = 20, category } = event;
-    let whereCondition = {};
+    const { keyword, page = 1, pageSize = 20, category, username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+
+    let whereCondition = { username };
     if (category) {
       whereCondition.category = category;
     }
@@ -258,10 +350,8 @@ const getDishes = async (event) => {
         options: "i",
       });
     }
-    let query = db.collection("dishes");
-    if (Object.keys(whereCondition).length > 0) {
-      query = query.where(whereCondition);
-    }
+
+    let query = db.collection("dishes").where(whereCondition);
     const countRes = await query.count();
     const total = countRes.total;
     const res = await query
@@ -275,11 +365,18 @@ const getDishes = async (event) => {
   }
 };
 
-// 获取全部菜品（不分页，循环获取全部）
-const getAllDishes = async () => {
+// 获取全部菜品（按 username 隔离，不分页，循环获取全部）
+const getAllDishes = async (event) => {
   try {
+    const { username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+
+    const whereCondition = { username };
+
     const MAX_LIMIT = 300;
-    const countRes = await db.collection("dishes").count();
+    const countRes = await db.collection("dishes").where(whereCondition).count();
     const total = countRes.total;
 
     if (total === 0) {
@@ -292,6 +389,7 @@ const getAllDishes = async () => {
     for (let i = 0; i < batchTimes; i++) {
       tasks.push(
         db.collection("dishes")
+          .where(whereCondition)
           .skip(i * MAX_LIMIT)
           .limit(MAX_LIMIT)
           .orderBy("createTime", "desc")
@@ -321,10 +419,20 @@ const getDishDetail = async (event) => {
   }
 };
 
-// 更新菜品
+// 更新菜品（校验 username 一致性）
 const updateDish = async (event) => {
   try {
-    const { dishId, name, imageFileID, ingredients, ratios, category } = event;
+    const { dishId, name, imageFileID, ingredients, ratios, category, username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+
+    // 校验菜品归属
+    const dish = await db.collection("dishes").doc(dishId).get();
+    if (dish.data.username !== username) {
+      return { success: false, errMsg: "无权修改此菜品" };
+    }
+
     const updateData = { updateTime: db.serverDate() };
     if (name !== undefined) updateData.name = name;
     if (imageFileID !== undefined) updateData.imageFileID = imageFileID;
@@ -335,8 +443,7 @@ const updateDish = async (event) => {
     // 如果更新了图片，先删除旧图片（管理员权限，不受存储安全规则限制）
     if (imageFileID !== undefined) {
       try {
-        const oldDish = await db.collection("dishes").doc(dishId).get();
-        const oldImageFileID = oldDish.data.imageFileID;
+        const oldImageFileID = dish.data.imageFileID;
         if (oldImageFileID && oldImageFileID !== imageFileID) {
           await cloud.deleteFile({ fileList: [oldImageFileID] });
         }
@@ -354,10 +461,20 @@ const updateDish = async (event) => {
   }
 };
 
-// 删除菜品
+// 删除菜品（校验 username 一致性）
 const deleteDish = async (event) => {
   try {
-    const { dishId, imageFileID } = event;
+    const { dishId, imageFileID, username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+
+    // 校验菜品归属
+    const dish = await db.collection("dishes").doc(dishId).get();
+    if (dish.data.username !== username) {
+      return { success: false, errMsg: "无权删除此菜品" };
+    }
+
     // 如果有图片，先删除云存储的图片
     if (imageFileID) {
       await cloud.deleteFile({ fileList: [imageFileID] });
@@ -371,7 +488,7 @@ const deleteDish = async (event) => {
 
 // ============ 园区模块 ============
 
-// 管理员权限校验
+// 管理员权限校验（保留用于用户管理模块）
 const checkAdmin = async (operatorUsername) => {
   const res = await db
     .collection("users")
@@ -391,20 +508,21 @@ const getNextGardenId = async () => {
   return res.data.length === 0 ? 1 : res.data[0].gardenId + 1;
 };
 
-// 新增园区
+// 新增园区（按 username 隔离，所有用户可操作）
 const addGarden = async (event) => {
   try {
     const { operatorUsername, name } = event;
-    if (!(await checkAdmin(operatorUsername))) {
-      return { success: false, errMsg: "无权限操作" };
+    if (!operatorUsername) {
+      return { success: false, errMsg: "用户名不能为空" };
     }
     if (!name || !name.trim()) {
       return { success: false, errMsg: "园区名称不能为空" };
     }
-    // 检查园区名称是否已存在
+    // 检查该用户的园区名称是否已存在（用户维度唯一）
+    const nameCheckCondition = { name: name.trim(), username: operatorUsername };
     const existGarden = await db
       .collection("gardens")
-      .where({ name: name.trim() })
+      .where(nameCheckCondition)
       .get();
     if (existGarden.data.length > 0) {
       return { success: false, errMsg: "园区名称已存在" };
@@ -414,6 +532,7 @@ const addGarden = async (event) => {
       data: {
         gardenId,
         name: name.trim(),
+        username: operatorUsername,
         createTime: db.serverDate(),
         updateTime: db.serverDate(),
       },
@@ -424,16 +543,20 @@ const addGarden = async (event) => {
   }
 };
 
-// 获取园区列表
+// 获取园区列表（按 username 隔离）
 const getGardens = async (event) => {
   try {
-    const { keyword } = event;
-    let query = db.collection("gardens");
-    if (keyword) {
-      query = query.where({
-        name: db.RegExp({ regexp: keyword, options: "i" }),
-      });
+    const { keyword, operatorUsername } = event;
+    if (!operatorUsername) {
+      return { success: false, errMsg: "用户名不能为空" };
     }
+
+    let whereCondition = { username: operatorUsername };
+    if (keyword) {
+      whereCondition.name = db.RegExp({ regexp: keyword, options: "i" });
+    }
+
+    let query = db.collection("gardens").where(whereCondition);
     const countRes = await query.count();
     const res = await query.orderBy("gardenId", "asc").get();
     return { success: true, data: { list: res.data, total: countRes.total } };
@@ -442,20 +565,31 @@ const getGardens = async (event) => {
   }
 };
 
-// 修改园区
+// 修改园区（校验 username 一致性）
 const updateGarden = async (event) => {
   try {
     const { operatorUsername, gardenId, name } = event;
-    if (!(await checkAdmin(operatorUsername))) {
-      return { success: false, errMsg: "无权限操作" };
+    if (!operatorUsername) {
+      return { success: false, errMsg: "用户名不能为空" };
     }
     if (!name || !name.trim()) {
       return { success: false, errMsg: "园区名称不能为空" };
     }
-    // 检查新名称是否与其他园区重复
+
+    // 校验园区归属
+    const gardenRes = await db.collection("gardens").where({ gardenId }).get();
+    if (gardenRes.data.length === 0) {
+      return { success: false, errMsg: "园区不存在" };
+    }
+    if (gardenRes.data[0].username !== operatorUsername) {
+      return { success: false, errMsg: "无权修改此园区" };
+    }
+
+    // 检查新名称是否与该用户的其他园区重复
+    const nameCheckCondition = { name: name.trim(), gardenId: _.neq(gardenId), username: operatorUsername };
     const existGarden = await db
       .collection("gardens")
-      .where({ name: name.trim(), gardenId: _.neq(gardenId) })
+      .where(nameCheckCondition)
       .get();
     if (existGarden.data.length > 0) {
       return { success: false, errMsg: "园区名称已存在" };
@@ -475,26 +609,41 @@ const updateGarden = async (event) => {
   }
 };
 
-// 删除园区
+// 删除园区（校验 username 一致性 + 清理该用户菜品的关联 ratios）
 const deleteGarden = async (event) => {
   try {
     const { operatorUsername, gardenId } = event;
-    if (!(await checkAdmin(operatorUsername))) {
-      return { success: false, errMsg: "无权限操作" };
+    if (!operatorUsername) {
+      return { success: false, errMsg: "用户名不能为空" };
     }
+
+    // 校验园区归属
+    const gardenRes = await db.collection("gardens").where({ gardenId }).get();
+    if (gardenRes.data.length === 0) {
+      return { success: false, errMsg: "园区不存在" };
+    }
+    if (gardenRes.data[0].username !== operatorUsername) {
+      return { success: false, errMsg: "无权删除此园区" };
+    }
+
     const res = await db.collection("gardens").where({ gardenId }).remove();
     if (res.stats.removed === 0) {
       return { success: false, errMsg: "园区不存在" };
     }
-    // 同步清理所有菜品中该园区的 ratios 数据（清理失败不影响删除结果）
+    // 同步清理该用户菜品中该园区的 ratios 数据（清理失败不影响删除结果）
     try {
       const gardenKey = String(gardenId);
       const MAX_LIMIT = 100;
-      const countRes = await db.collection("dishes").count();
+
+      // 构建用户隔离条件，只清理自己的菜品
+      const dishUserCondition = { username: operatorUsername };
+
+      const countRes = await db.collection("dishes").where(dishUserCondition).count();
       const total = countRes.total;
       for (let i = 0; i < total; i += MAX_LIMIT) {
         const dishes = await db
           .collection("dishes")
+          .where(dishUserCondition)
           .skip(i)
           .limit(MAX_LIMIT)
           .field({ _id: true, ratios: true })
@@ -525,11 +674,14 @@ const deleteGarden = async (event) => {
 const saveRecord = async (event) => {
   try {
     const { selectedDates, tables, summary, gardens, username } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
     const wxContext = cloud.getWXContext();
     const res = await db.collection("records").add({
       data: {
         _openid: wxContext.OPENID,
-        username: username || "",
+        username,
         selectedDates: selectedDates || [],
         tables: tables || [],
         summary: summary || {},

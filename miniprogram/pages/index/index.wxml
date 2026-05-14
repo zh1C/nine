@@ -29,8 +29,8 @@
   </view>
 
   <view class="menu-grid">
-    <!-- 管理员：菜品管理 -->
-    <view class="menu-item" wx:if="{{isAdmin}}" bindtap="navigateTo" data-page="/pages/dishes/dishes">
+    <!-- 所有用户：菜品管理 -->
+    <view class="menu-item" bindtap="navigateTo" data-page="/pages/dishes/dishes">
       <view class="menu-icon">🥘</view>
       <text class="menu-title">菜品管理</text>
       <text class="menu-desc">录入和管理菜品配料</text>
@@ -50,8 +50,8 @@
       <text class="menu-desc">查看保存的配料记录</text>
     </view>
 
-    <!-- 管理员：园区管理 -->
-    <view class="menu-item" wx:if="{{isAdmin}}" bindtap="navigateTo" data-page="/pages/gardenManage/gardenManage">
+    <!-- 所有用户：园区管理 -->
+    <view class="menu-item" bindtap="navigateTo" data-page="/pages/gardenManage/gardenManage">
       <view class="menu-icon">🏢</view>
       <text class="menu-title">园区管理</text>
       <text class="menu-desc">管理园区信息</text>

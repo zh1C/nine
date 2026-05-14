@@ -15,20 +15,14 @@ Page({
   },
 
   onLoad() {
-    this.checkPermission();
-  },
-
-  // 权限校验：仅管理员可访问
-  checkPermission() {
+    // 校验登录
     const userInfo = app.globalData.userInfo;
-    if (!userInfo || userInfo.role !== "admin") {
+    if (!userInfo) {
       wx.showModal({
-        title: "无权限",
-        content: "仅管理员可以管理菜品",
+        title: "未登录",
+        content: "请先登录",
         showCancel: false,
-        success: () => {
-          wx.navigateBack();
-        },
+        success: () => { wx.navigateBack(); },
       });
       return;
     }
@@ -77,6 +71,7 @@ Page({
         name: "quickstartFunctions",
         data: {
           type: "getDishes",
+          username: app.globalData.userInfo.username,
           keyword: this.data.keyword,
           page: this.data.page,
           pageSize: this.data.pageSize,
@@ -130,6 +125,7 @@ Page({
               name: "quickstartFunctions",
               data: {
                 type: "deleteDish",
+                username: app.globalData.userInfo.username,
                 dishId: id,
                 imageFileID: image,
               },
