@@ -561,3 +561,112 @@
   background: #e67e22;
   color: #fff;
 }
+
+/* ====== 冲突详情展开 ====== */
+.conflict-toggle {
+  display: flex;
+  align-items: center;
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx dashed #e0d5c5;
+}
+
+.conflict-toggle-text {
+  font-size: 24rpx;
+  color: #1890ff;
+}
+
+.conflict-toggle-arrow {
+  font-size: 20rpx;
+  color: #1890ff;
+  margin-left: 8rpx;
+}
+
+.conflict-detail-panel {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: #fff;
+  border-radius: 8rpx;
+  border: 1rpx solid #eee;
+}
+
+.conflict-section-title {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 12rpx;
+  padding-bottom: 8rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.conflict-section-title + .conflict-section-title {
+  margin-top: 16rpx;
+}
+
+.conflict-ing-list {
+  margin-bottom: 16rpx;
+}
+
+.conflict-ing-row {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 0;
+  font-size: 24rpx;
+  color: #666;
+  gap: 16rpx;
+}
+
+.conflict-ing-name {
+  min-width: 100rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.conflict-ing-unit {
+  color: #999;
+}
+
+.conflict-ing-type {
+  color: #999;
+}
+
+.conflict-ing-tag {
+  font-size: 22rpx;
+}
+
+.conflict-garden-block {
+  margin-bottom: 12rpx;
+}
+
+.conflict-garden-block:last-child {
+  margin-bottom: 0;
+}
+
+.conflict-garden-name {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.conflict-ratio-list {
+  padding-left: 16rpx;
+}
+
+.conflict-ratio-item {
+  display: flex;
+  align-items: center;
+  padding: 4rpx 0;
+  font-size: 24rpx;
+}
+
+.conflict-ratio-label {
+  color: #666;
+  min-width: 100rpx;
+}
+
+.conflict-ratio-value {
+  color: #333;
+  font-weight: 500;
+}

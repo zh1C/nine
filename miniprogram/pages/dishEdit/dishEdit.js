@@ -407,6 +407,12 @@ Page({
   },
 
   // ========== 冲突弹框 ==========
+  toggleConflictDetail(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const key = `conflictList[${idx}].expanded`;
+    this.setData({ [key]: !this.data.conflictList[idx].expanded });
+  },
+
   onCloseConflictModal() {
     this.setData({ showConflictModal: false, conflictList: [], conflictCanForce: false });
   },

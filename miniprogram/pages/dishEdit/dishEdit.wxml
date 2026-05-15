@@ -179,6 +179,39 @@
             </view>
           </view>
           <text class="conflict-detail">{{item.detail}}</text>
+
+          <!-- 查看详情按钮 -->
+          <view class="conflict-toggle" bindtap="toggleConflictDetail" data-idx="{{index}}">
+            <text class="conflict-toggle-text">{{item.expanded ? '收起详情' : '查看详情'}}</text>
+            <text class="conflict-toggle-arrow">{{item.expanded ? '▲' : '▼'}}</text>
+          </view>
+
+          <!-- 冲突菜品详情面板 -->
+          <view class="conflict-detail-panel" wx:if="{{item.expanded}}">
+            <view class="conflict-section-title">📋 配料列表</view>
+            <view class="conflict-ing-list">
+              <view wx:for="{{item.ingredients}}" wx:for-item="ing" wx:key="name" class="conflict-ing-row">
+                <text class="conflict-ing-name">{{ing.name}}</text>
+                <text class="conflict-ing-unit">{{ing.unit}}</text>
+                <text class="conflict-ing-type">{{ing.type}}</text>
+                <text class="conflict-ing-tag" wx:if="{{ing.advance}}">🚚提前</text>
+                <text class="conflict-ing-tag" wx:if="{{ing.reuse}}">🔄重复</text>
+              </view>
+            </view>
+
+            <view class="conflict-section-title">📊 各园区比例</view>
+            <view wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId">
+              <view wx:if="{{item.ratios['' + garden.gardenId]}}" class="conflict-garden-block">
+                <text class="conflict-garden-name">{{garden.name}}</text>
+                <view class="conflict-ratio-list">
+                  <view wx:for="{{item.ingredients}}" wx:for-item="ing" wx:for-index="ingIdx" wx:key="name" class="conflict-ratio-item">
+                    <text class="conflict-ratio-label">{{ing.name}}:</text>
+                    <text class="conflict-ratio-value">{{item.ratios['' + garden.gardenId][ingIdx]}} {{ing.unit}}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
         </view>
       </scroll-view>
 

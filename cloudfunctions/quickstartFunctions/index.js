@@ -390,6 +390,8 @@ const checkDishConflict = async (event) => {
           dishName: dish.name,
           dishId: dish._id,
           detail: "菜品名称「" + dish.name + "」已存在",
+          ingredients: dish.ingredients || [],
+          ratios: dish.ratios || {},
         });
         continue; // 名称已命中，不再检查配料
       }
@@ -401,6 +403,8 @@ const checkDishConflict = async (event) => {
           dishName: dish.name,
           dishId: dish._id,
           detail: "与菜品「" + dish.name + "」的配料和各园区比例完全一致",
+          ingredients: dish.ingredients || [],
+          ratios: dish.ratios || {},
         });
       }
     }
