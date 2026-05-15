@@ -154,4 +154,48 @@
   <button class="save-btn" bindtap="handleSave" loading="{{loading}}" disabled="{{loading}}">
     {{loading ? '保存中...' : '保存菜品'}}
   </button>
+
+  <!-- 菜品冲突弹框 -->
+  <view class="conflict-modal-mask" wx:if="{{showConflictModal}}">
+    <view class="conflict-modal" catchtap="">
+      <!-- 标题区 -->
+      <view class="conflict-header">
+        <text class="conflict-icon">{{conflictCanForce ? '⚠️' : '🚫'}}</text>
+        <text class="conflict-title">{{conflictCanForce ? '配料比例重复' : '菜品冲突'}}</text>
+      </view>
+
+      <!-- 提示文字 -->
+      <view class="conflict-desc">
+        {{conflictCanForce ? '检测到以下菜品与当前菜品的配料和比例一致，您可以选择仍然保存或返回修改：' : '检测到以下菜品与当前菜品存在名称冲突，请修改后再保存：'}}
+      </view>
+
+      <!-- 冲突列表 -->
+      <scroll-view class="conflict-list" scroll-y>
+        <view wx:for="{{conflictList}}" wx:key="dishId" class="conflict-item">
+          <view class="conflict-item-header">
+            <text class="conflict-dish-name">{{item.dishName}}</text>
+            <view class="conflict-type-tag {{item.type === 'name' ? 'tag-name' : 'tag-ratio'}}">
+              {{item.type === 'name' ? '名称重复' : '配料比例重复'}}
+            </view>
+          </view>
+          <text class="conflict-detail">{{item.detail}}</text>
+        </view>
+      </scroll-view>
+
+      <!-- 操作按钮：名称重复只有「我知道了」，仅配料重复有「返回修改」+「仍然保存」 -->
+      <view class="conflict-actions" wx:if="{{!conflictCanForce}}">
+        <view class="conflict-btn conflict-btn-block" bindtap="onCloseConflictModal">
+          我知道了
+        </view>
+      </view>
+      <view class="conflict-actions" wx:else>
+        <view class="conflict-btn conflict-btn-cancel" bindtap="onCloseConflictModal">
+          返回修改
+        </view>
+        <view class="conflict-btn conflict-btn-force" bindtap="onConflictForce">
+          仍然保存
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

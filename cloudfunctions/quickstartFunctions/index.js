@@ -305,6 +305,115 @@ const deleteUser = async (event) => {
 
 // ============ 菜品模块 ============
 
+// 辅助函数：判断配料+比例是否完全一致
+function isIngredientsAndRatiosEqual(ingA, ingB, ratiosA, ratiosB) {
+  if (!ingA || !ingB) return false;
+  // 1. 按配料名排序后对比名称列表
+  const sortedA = [...ingA].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedB = [...ingB].sort((a, b) => a.name.localeCompare(b.name));
+  if (sortedA.length !== sortedB.length) return false;
+  for (let i = 0; i < sortedA.length; i++) {
+    if (sortedA[i].name !== sortedB[i].name) return false;
+  }
+
+  // 2. 配料名一致，建立名称到原始索引的映射
+  const indexMapA = {};
+  ingA.forEach((ing, idx) => { indexMapA[ing.name] = idx; });
+  const indexMapB = {};
+  ingB.forEach((ing, idx) => { indexMapB[ing.name] = idx; });
+
+  // 3. 对比每个园区的比例（按配料名对齐后比较数值）
+  const rA = ratiosA || {};
+  const rB = ratiosB || {};
+  const gardenKeysA = Object.keys(rA).sort();
+  const gardenKeysB = Object.keys(rB).sort();
+  if (gardenKeysA.join(",") !== gardenKeysB.join(",")) return false;
+
+  for (const key of gardenKeysA) {
+    const arrA = rA[key];
+    const arrB = rB[key];
+    for (const ingName of sortedA.map((i) => i.name)) {
+      const valA = arrA[indexMapA[ingName]] || 0;
+      const valB = arrB[indexMapB[ingName]] || 0;
+      if (valA !== valB) return false;
+    }
+  }
+
+  return true;
+}
+
+// 检查菜品冲突（同 username + category 下检查名称和配料比例重复）
+const checkDishConflict = async (event) => {
+  try {
+    const { username, category, name, ingredients, ratios, dishId } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+
+    // 查询同用户、同类型下的所有菜品
+    const whereCondition = { username, category: category || "student" };
+    const MAX_LIMIT = 300;
+    const countRes = await db.collection("dishes").where(whereCondition).count();
+    const total = countRes.total;
+
+    if (total === 0) {
+      return { success: true, data: { hasConflict: false, conflicts: [] } };
+    }
+
+    const batchTimes = Math.ceil(total / MAX_LIMIT);
+    const tasks = [];
+    for (let i = 0; i < batchTimes; i++) {
+      tasks.push(
+        db.collection("dishes")
+          .where(whereCondition)
+          .skip(i * MAX_LIMIT)
+          .limit(MAX_LIMIT)
+          .get()
+      );
+    }
+    const results = await Promise.all(tasks);
+    let allDishes = [];
+    results.forEach((res) => {
+      allDishes = allDishes.concat(res.data);
+    });
+
+    const conflicts = [];
+
+    for (const dish of allDishes) {
+      // 编辑模式排除自身
+      if (dishId && dish._id === dishId) continue;
+
+      // 冲突类型1：名称重复
+      if (dish.name && dish.name.trim() === (name || "").trim()) {
+        conflicts.push({
+          type: "name",
+          dishName: dish.name,
+          dishId: dish._id,
+          detail: "菜品名称「" + dish.name + "」已存在",
+        });
+        continue; // 名称已命中，不再检查配料
+      }
+
+      // 冲突类型2：配料+比例完全一致
+      if (isIngredientsAndRatiosEqual(dish.ingredients, ingredients, dish.ratios, ratios)) {
+        conflicts.push({
+          type: "ingredientRatio",
+          dishName: dish.name,
+          dishId: dish._id,
+          detail: "与菜品「" + dish.name + "」的配料和各园区比例完全一致",
+        });
+      }
+    }
+
+    return {
+      success: true,
+      data: { hasConflict: conflicts.length > 0, conflicts },
+    };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "检查菜品冲突失败" };
+  }
+};
+
 // 添加菜品（写入 username 实现数据隔离）
 const addDish = async (event) => {
   try {
@@ -828,6 +937,8 @@ exports.main = async (event, context) => {
     case "deleteUser":
       return await deleteUser(event);
     // 菜品模块
+    case "checkDishConflict":
+      return await checkDishConflict(event);
     case "addDish":
       return await addDish(event);
     case "getDishes":

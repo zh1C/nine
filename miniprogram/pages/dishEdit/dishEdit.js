@@ -12,6 +12,9 @@ Page({
     typeOptions: ["肉类", "蔬菜"],
     category: "student", // "student" | "teacher"
     loading: false,
+    showConflictModal: false,
+    conflictList: [],
+    conflictCanForce: false, // 是否允许强制保存（仅配料比例重复时为 true）
   },
 
   onLoad(options) {
@@ -72,7 +75,7 @@ Page({
           return {
             gardenId: g.gardenId,
             name: g.name,
-            expanded: idx === 0,
+            expanded: true,
             filled,
             ratios,
           };
@@ -321,13 +324,43 @@ Page({
     }
 
     this.setData({ loading: true });
-    wx.showLoading({ title: "保存中..." });
+    wx.showLoading({ title: "检查冲突中..." });
 
     try {
-      const imageFileID = await this.uploadImage();
-
       const app = getApp();
       const username = app.globalData.userInfo.username;
+
+      // ====== 冲突检查 ======
+      const conflictRes = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "checkDishConflict",
+          username,
+          category: this.data.category,
+          name: name.trim(),
+          ingredients: processedIngredients,
+          ratios,
+          dishId: isEdit ? dishId : undefined,
+        },
+      });
+
+      if (conflictRes.result.success && conflictRes.result.data.hasConflict) {
+        const conflicts = conflictRes.result.data.conflicts;
+        // 判断是否含有名称重复：有名称重复则不允许强制保存
+        const hasNameConflict = conflicts.some((c) => c.type === "name");
+        wx.hideLoading();
+        this.setData({
+          loading: false,
+          showConflictModal: true,
+          conflictList: conflicts,
+          conflictCanForce: !hasNameConflict, // 仅配料比例重复时可强制保存
+        });
+        return;
+      }
+      // ====== 冲突检查结束 ======
+
+      wx.showLoading({ title: "保存中..." });
+      const imageFileID = await this.uploadImage();
 
       if (isEdit) {
         await wx.cloud.callFunction({
@@ -364,6 +397,83 @@ Page({
       setTimeout(() => {
         wx.navigateBack();
       }, 1000);
+    } catch (e) {
+      console.error(e);
+      wx.showToast({ title: "保存失败", icon: "none" });
+    } finally {
+      this.setData({ loading: false });
+      wx.hideLoading();
+    }
+  },
+
+  // ========== 冲突弹框 ==========
+  onCloseConflictModal() {
+    this.setData({ showConflictModal: false, conflictList: [], conflictCanForce: false });
+  },
+
+  // 强制保存（仅配料比例重复时可用）
+  async onConflictForce() {
+    this.setData({ showConflictModal: false, conflictList: [], conflictCanForce: false, loading: true });
+    wx.showLoading({ title: "保存中..." });
+
+    try {
+      const { name, ingredients, gardens, isEdit, dishId } = this.data;
+      const app = getApp();
+      const username = app.globalData.userInfo.username;
+      const imageFileID = await this.uploadImage();
+
+      const validIngredients = ingredients.filter((item) => item.name.trim());
+      const processedIngredients = validIngredients.map((item) => ({
+        name: item.name.trim(),
+        unit: item.unit,
+        type: item.type || "蔬菜",
+        advance: item.advance || false,
+        reuse: item.reuse || false,
+      }));
+
+      const ratios = {};
+      for (const garden of gardens) {
+        const hasAnyValue = garden.ratios.some(
+          (r) => r !== "" && r !== null && r !== undefined
+        );
+        if (!hasAnyValue) continue;
+        ratios[String(garden.gardenId)] = garden.ratios
+          .slice(0, validIngredients.length)
+          .map((r) => parseFloat(r));
+      }
+
+      if (isEdit) {
+        await wx.cloud.callFunction({
+          name: "quickstartFunctions",
+          data: {
+            type: "updateDish",
+            username,
+            dishId,
+            name: name.trim(),
+            imageFileID,
+            ingredients: processedIngredients,
+            ratios,
+            category: this.data.category,
+          },
+        });
+      } else {
+        await wx.cloud.callFunction({
+          name: "quickstartFunctions",
+          data: {
+            type: "addDish",
+            username,
+            name: name.trim(),
+            imageFileID,
+            ingredients: processedIngredients,
+            ratios,
+            category: this.data.category,
+          },
+        });
+      }
+
+      getApp().globalData.dishListNeedRefresh = true;
+      wx.showToast({ title: "保存成功", icon: "success" });
+      setTimeout(() => { wx.navigateBack(); }, 1000);
     } catch (e) {
       console.error(e);
       wx.showToast({ title: "保存失败", icon: "none" });
