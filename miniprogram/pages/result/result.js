@@ -9,6 +9,13 @@ Page({
     saved: false, // 是否已保存到云端
     fromHistory: false, // 是否从历史记录查看
     generatingIdx: -1, // 当前正在生成图片的表格索引, -1=无
+
+    // ====== 配料微调（整行模式） ======
+    adjustments: {}, // 调整记录: { "tableIdx_rowIdx_gardenId": deltaValue }
+    showAdjustPanel: false,
+    adjustTarget: null, // { tableIdx, rowIdx, ingName, unit }
+    adjustRowDeltas: {}, // 面板内临时状态: { gardenId: delta }
+    adjustRowOriginals: {}, // 面板内原始值: { gardenId: originalVal }
   },
 
   onLoad(options) {
@@ -26,10 +33,147 @@ Page({
       gardens: data.gardens,
       selectedDates: data.selectedDates,
       fromHistory: options.from === "history",
+      adjustments: data.adjustments || {},
     });
 
     // 保存原始数据用于存云数据库
     this._rawData = data;
+  },
+
+  // ========== 配料微调（整行模式） ==========
+
+  // 长按配料行，打开调整面板
+  openAdjustPanel(e) {
+    const { tableIdx, rowIdx, ingName, unit } = e.currentTarget.dataset;
+    const { tables, gardens, adjustments } = this.data;
+    const row = tables[tableIdx].rows[rowIdx];
+
+    // 初始化每个园区的原始值和已有调整量
+    const adjustRowOriginals = {};
+    const adjustRowDeltas = {};
+    gardens.forEach((g) => {
+      const gardenId = String(g.gardenId);
+      adjustRowOriginals[gardenId] = row.amounts[gardenId] || 0;
+      const key = `${tableIdx}_${rowIdx}_${gardenId}`;
+      adjustRowDeltas[gardenId] = adjustments[key] || 0;
+    });
+
+    this.setData({
+      showAdjustPanel: true,
+      adjustTarget: { tableIdx, rowIdx, ingName, unit },
+      adjustRowDeltas,
+      adjustRowOriginals,
+    });
+  },
+
+  closeAdjustPanel() {
+    this.setData({ showAdjustPanel: false, adjustTarget: null, adjustRowDeltas: {}, adjustRowOriginals: {} });
+  },
+
+  // 快捷加减某个园区
+  quickAdjustRow(e) {
+    const { gardenId, delta } = e.currentTarget.dataset;
+    const { adjustRowDeltas, adjustRowOriginals } = this.data;
+    const gId = String(gardenId);
+    const newDelta = (adjustRowDeltas[gId] || 0) + Number(delta);
+    const finalVal = (adjustRowOriginals[gId] || 0) + newDelta;
+
+    if (finalVal < 0) {
+      wx.showToast({ title: "不能为负数", icon: "none" });
+      return;
+    }
+
+    this.setData({ [`adjustRowDeltas.${gId}`]: newDelta });
+  },
+
+  // 手动输入某个园区的调整量
+  onAdjustRowInput(e) {
+    const gardenId = String(e.currentTarget.dataset.gardenId);
+    const val = e.detail.value;
+    const delta = parseFloat(val) || 0;
+    const { adjustRowOriginals } = this.data;
+    const finalVal = (adjustRowOriginals[gardenId] || 0) + delta;
+
+    if (finalVal < 0) {
+      wx.showToast({ title: "不能为负数", icon: "none" });
+      return;
+    }
+
+    this.setData({ [`adjustRowDeltas.${gardenId}`]: delta });
+  },
+
+  // 确认整行调整
+  confirmAdjust() {
+    const { adjustTarget, adjustRowDeltas, adjustments } = this.data;
+    if (!adjustTarget) return;
+
+    const { tableIdx, rowIdx } = adjustTarget;
+    const newAdjustments = { ...adjustments };
+
+    // 将每个园区的调整量写入 adjustments
+    Object.keys(adjustRowDeltas).forEach((gardenId) => {
+      const key = `${tableIdx}_${rowIdx}_${gardenId}`;
+      const delta = adjustRowDeltas[gardenId];
+      if (delta === 0) {
+        delete newAdjustments[key];
+      } else {
+        newAdjustments[key] = delta;
+      }
+    });
+
+    this.setData({
+      adjustments: newAdjustments,
+      showAdjustPanel: false,
+      adjustTarget: null,
+      adjustRowDeltas: {},
+      adjustRowOriginals: {},
+    });
+  },
+
+  // 还原整行所有调整
+  resetAdjust() {
+    const { adjustTarget, adjustments, gardens } = this.data;
+    if (!adjustTarget) return;
+
+    const { tableIdx, rowIdx } = adjustTarget;
+    const newAdjustments = { ...adjustments };
+
+    // 删除该行所有园区的调整
+    gardens.forEach((g) => {
+      const key = `${tableIdx}_${rowIdx}_${g.gardenId}`;
+      delete newAdjustments[key];
+    });
+
+    this.setData({
+      adjustments: newAdjustments,
+      showAdjustPanel: false,
+      adjustTarget: null,
+      adjustRowDeltas: {},
+      adjustRowOriginals: {},
+    });
+  },
+
+  preventBubble() {},
+
+  // ========== 构建调整后的 tables（用于保存和导出） ==========
+  buildFinalTables() {
+    const { tables, adjustments } = this.data;
+    if (!adjustments || Object.keys(adjustments).length === 0) {
+      return tables;
+    }
+    return tables.map((table, tIdx) => ({
+      ...table,
+      rows: table.rows.map((row, rIdx) => {
+        const newAmounts = { ...row.amounts };
+        Object.keys(newAmounts).forEach((gardenId) => {
+          const key = `${tIdx}_${rIdx}_${gardenId}`;
+          if (adjustments[key]) {
+            newAmounts[gardenId] = Math.round(((newAmounts[gardenId] || 0) + adjustments[key]) * 1000) / 1000;
+          }
+        });
+        return { ...row, amounts: newAmounts };
+      }),
+    }));
   },
 
   // ========== 生成单个表格图片 ==========
@@ -45,7 +189,8 @@ Page({
   },
 
   generateDailyTableImage(tableIdx) {
-    const table = this.data.tables[tableIdx];
+    const finalTables = this.buildFinalTables();
+    const table = finalTables[tableIdx];
     const gardens = this.data.gardens;
     if (!table) return;
 
@@ -174,7 +319,6 @@ Page({
     const colGardenWidth = 140;
     const canvasWidth = Math.max(colDateWidth + gardens.length * colGardenWidth + padding * 2, 600);
 
-    // 计算总行数：每天按学生+老师菜品总数决定
     let totalRows = 0;
     summary.dates.forEach((dateObj) => {
       let maxLines = 1;
@@ -182,7 +326,6 @@ Page({
         const gardenData = summary.data[dateObj.date]?.[g.gardenId] || { student: [], teacher: [] };
         const studentDishes = gardenData.student || [];
         const teacherDishes = gardenData.teacher || [];
-        // 每个分组标题占1行 + 菜品行数
         let lines = 0;
         if (studentDishes.length > 0) lines += 1 + studentDishes.length;
         if (teacherDishes.length > 0) lines += 1 + teacherDishes.length;
@@ -210,11 +353,9 @@ Page({
       canvas.height = canvasHeight * dpr;
       ctx.scale(dpr, dpr);
 
-      // 背景
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      // 标题
       ctx.fillStyle = "#FF9800";
       ctx.fillRect(0, 0, canvasWidth, headerHeight);
       ctx.fillStyle = "#ffffff";
@@ -224,7 +365,6 @@ Page({
 
       let y = headerHeight + 10;
 
-      // 表头
       ctx.fillStyle = "#f0f0f0";
       ctx.fillRect(padding, y, canvasWidth - padding * 2, tableHeaderHeight);
       ctx.fillStyle = "#666666";
@@ -239,7 +379,6 @@ Page({
       });
       y += tableHeaderHeight;
 
-      // 数据行
       summary.dates.forEach((dateObj, dIdx) => {
         let maxLines = 1;
         gardens.forEach((g) => {
@@ -258,13 +397,11 @@ Page({
           ctx.fillRect(padding, y, canvasWidth - padding * 2, blockHeight);
         }
 
-        // 日期标签
         ctx.fillStyle = "#333333";
         ctx.textAlign = "left";
         ctx.font = "bold 13px sans-serif";
         ctx.fillText(dateObj.label, padding + 8, y + 24);
 
-        // 各园区菜品
         ctx.textAlign = "center";
         gardens.forEach((g, gIdx) => {
           const gardenData = summary.data[dateObj.date]?.[g.gardenId] || { student: [], teacher: [] };
@@ -309,7 +446,6 @@ Page({
         y += blockHeight;
       });
 
-      // 导出
       wx.canvasToTempFilePath({
         canvas,
         x: 0, y: 0,
@@ -334,7 +470,8 @@ Page({
 
   // 降级方案（旧版Canvas）
   generateDailyImageLegacy(tableIdx, canvasWidth, canvasHeight) {
-    const table = this.data.tables[tableIdx];
+    const finalTables = this.buildFinalTables();
+    const table = finalTables[tableIdx];
     const gardens = this.data.gardens;
     const ctx = wx.createCanvasContext("resultCanvasLegacy", this);
 
@@ -347,11 +484,9 @@ Page({
     const colUnitWidth = 60;
     const unitX = padding + colNameWidth + gardens.length * colGardenWidth + colUnitWidth / 2;
 
-    // 背景
     ctx.setFillStyle("#ffffff");
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // 标题
     ctx.setFillStyle("#4CAF50");
     ctx.fillRect(0, 0, canvasWidth, headerHeight);
     ctx.setFillStyle("#ffffff");
@@ -361,7 +496,6 @@ Page({
 
     let y = headerHeight + 10;
 
-    // 表头
     ctx.setFillStyle("#f0f0f0");
     ctx.fillRect(padding, y, canvasWidth - padding * 2, tableHeaderHeight);
     ctx.setFillStyle("#666666");
@@ -376,7 +510,6 @@ Page({
     ctx.fillText("单位", unitX, y + 28);
     y += tableHeaderHeight;
 
-    // 数据行
     ctx.setFontSize(13);
     table.rows.forEach((row, rIdx) => {
       if (rIdx % 2 === 0) {
@@ -449,7 +582,8 @@ Page({
     wx.showLoading({ title: "保存中..." });
 
     try {
-      const { tables, summary, gardens, selectedDates } = this.data;
+      const { summary, gardens, selectedDates, adjustments } = this.data;
+      const finalTables = this.buildFinalTables();
 
       const app = getApp();
       const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
@@ -460,9 +594,10 @@ Page({
           type: "saveRecord",
           username,
           selectedDates,
-          tables,
+          tables: finalTables,
           summary,
           gardens,
+          adjustments: Object.keys(adjustments).length > 0 ? adjustments : undefined,
         },
       });
 

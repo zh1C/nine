@@ -124,6 +124,7 @@ Page({
           summary: record.summary,
           gardens: record.gardens,
           selectedDates: record.selectedDates,
+          adjustments: record.adjustments || {},
         };
         wx.navigateTo({ url: "/pages/result/result?from=history" });
       } else {

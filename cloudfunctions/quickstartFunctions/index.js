@@ -786,21 +786,26 @@ const deleteGarden = async (event) => {
 // 保存计算记录
 const saveRecord = async (event) => {
   try {
-    const { selectedDates, tables, summary, gardens, username } = event;
+    const { selectedDates, tables, summary, gardens, username, adjustments } = event;
     if (!username) {
       return { success: false, errMsg: "用户名不能为空" };
     }
     const wxContext = cloud.getWXContext();
+    const recordData = {
+      _openid: wxContext.OPENID,
+      username,
+      selectedDates: selectedDates || [],
+      tables: tables || [],
+      summary: summary || {},
+      gardens: gardens || [],
+      createTime: db.serverDate(),
+    };
+    // 有调整记录时才存储 adjustments 字段
+    if (adjustments && Object.keys(adjustments).length > 0) {
+      recordData.adjustments = adjustments;
+    }
     const res = await db.collection("records").add({
-      data: {
-        _openid: wxContext.OPENID,
-        username,
-        selectedDates: selectedDates || [],
-        tables: tables || [],
-        summary: summary || {},
-        gardens: gardens || [],
-        createTime: db.serverDate(),
-      },
+      data: recordData,
     });
     return { success: true, data: { _id: res._id } };
   } catch (e) {

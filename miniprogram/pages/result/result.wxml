@@ -1,25 +1,55 @@
 <!--pages/result/result.wxml-->
 <view class="result-page">
+  <!-- 全局操作提示（始终显示） -->
+  <view class="page-tip-bar">
+    <text class="page-tip-icon">💡</text>
+    <text class="page-tip-text">长按配料行可微调用量</text>
+  </view>
+
   <!-- 每天的配料表 -->
-  <view wx:for="{{tables}}" wx:key="date" class="table-card">
+  <view wx:for="{{tables}}" wx:for-index="tableIdx" wx:key="date" class="table-card">
     <view class="table-card-header">
       <text class="table-card-title">📋 {{item.dateLabel}} 配料清单</text>
     </view>
 
     <view class="table-wrapper">
-      <!-- 表头 -->
       <scroll-view class="table-scroll" scroll-x>
         <view class="table-inner">
+          <!-- 表头 -->
           <view class="table-header-row">
             <text class="th th-name">配料</text>
             <text wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="th th-garden">{{garden.name}}</text>
             <text class="th th-unit">单位</text>
           </view>
 
-          <!-- 数据行 -->
-          <view wx:for="{{item.rows}}" wx:for-item="row" wx:for-index="rowIdx" wx:key="name" class="table-data-row {{rowIdx % 2 === 0 ? 'even' : ''}}">
+          <!-- 数据行（长按整行触发调整） -->
+          <view
+            wx:for="{{item.rows}}"
+            wx:for-item="row"
+            wx:for-index="rowIdx"
+            wx:key="name"
+            class="table-data-row {{rowIdx % 2 === 0 ? 'even' : ''}}"
+            data-table-idx="{{tableIdx}}"
+            data-row-idx="{{rowIdx}}"
+            data-ing-name="{{row.name}}"
+            data-unit="{{row.unit}}"
+            bindlongpress="openAdjustPanel"
+          >
             <text class="td td-name">{{row.name}}</text>
-            <text wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="td td-amount {{row.amounts[garden.gardenId] > 0 ? 'has-value' : ''}}">{{row.amounts[garden.gardenId] || 0}}</text>
+            <!-- 各园区数值 -->
+            <view
+              wx:for="{{gardens}}"
+              wx:for-item="garden"
+              wx:for-index="gardenIdx"
+              wx:key="gardenId"
+              class="td td-amount {{(row.amounts[garden.gardenId] || 0) + (adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] || 0) > 0 ? 'has-value' : ''}} {{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] ? 'adjusted' : ''}}"
+            >
+              <text class="amount-val">{{(row.amounts[garden.gardenId] || 0) + (adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] || 0)}}</text>
+              <text
+                wx:if="{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId]}}"
+                class="adjust-badge {{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] > 0 ? 'badge-up' : 'badge-down'}}"
+              >{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] > 0 ? '+' : ''}}{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId]}}</text>
+            </view>
             <text class="td td-unit">{{row.unit}}</text>
           </view>
         </view>
@@ -27,7 +57,7 @@
     </view>
 
     <!-- 保存按钮 -->
-    <view class="table-save-btn" data-idx="{{index}}" data-type="daily" bindtap="generateTableImage">
+    <view class="table-save-btn" data-idx="{{tableIdx}}" data-type="daily" bindtap="generateTableImage">
       <text>💾 保存此表为图片</text>
     </view>
   </view>
@@ -49,21 +79,18 @@
           <view wx:for="{{summary.dates}}" wx:for-item="dateObj" wx:for-index="dIdx" wx:key="date" class="table-data-row {{dIdx % 2 === 0 ? 'even' : ''}}">
             <text class="td td-date">{{dateObj.label}}</text>
             <view wx:for="{{gardens}}" wx:for-item="garden" wx:key="gardenId" class="td td-dishes">
-              <!-- 学生菜品分组 -->
               <view wx:if="{{summary.data[dateObj.date][garden.gardenId].student.length > 0}}" class="dish-group student-group">
                 <text class="dish-group-label">🎒学生</text>
                 <view class="dish-tag-list">
                   <text wx:for="{{summary.data[dateObj.date][garden.gardenId].student}}" wx:for-item="dishName" wx:key="*this" class="dish-tag student-tag">{{dishName}}</text>
                 </view>
               </view>
-              <!-- 老师菜品分组 -->
               <view wx:if="{{summary.data[dateObj.date][garden.gardenId].teacher.length > 0}}" class="dish-group teacher-group">
                 <text class="dish-group-label">👨‍🏫老师</text>
                 <view class="dish-tag-list">
                   <text wx:for="{{summary.data[dateObj.date][garden.gardenId].teacher}}" wx:for-item="dishName" wx:key="*this" class="dish-tag teacher-tag">{{dishName}}</text>
                 </view>
               </view>
-              <!-- 无菜品 -->
               <text wx:if="{{summary.data[dateObj.date][garden.gardenId].student.length === 0 && summary.data[dateObj.date][garden.gardenId].teacher.length === 0}}" class="no-dish">-</text>
             </view>
           </view>
@@ -71,7 +98,6 @@
       </scroll-view>
     </view>
 
-    <!-- 保存按钮 -->
     <view class="table-save-btn" data-idx="999" data-type="summary" bindtap="generateTableImage">
       <text>💾 保存此表为图片</text>
     </view>
@@ -82,6 +108,42 @@
     <button class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved}}">
       {{saved ? '☁️ 已保存到云端' : '📥 保存记录到云端'}}
     </button>
+  </view>
+</view>
+
+<!-- 配料调整弹窗（居中） -->
+<view class="adjust-modal-mask" wx:if="{{showAdjustPanel}}" bindtap="closeAdjustPanel">
+  <view class="adjust-modal" catchtap="preventBubble">
+    <!-- 标题 -->
+    <view class="adjust-modal-header">
+      <text class="adjust-modal-title">{{adjustTarget.ingName}}</text>
+      <text class="adjust-modal-unit">({{adjustTarget.unit}})</text>
+    </view>
+
+    <!-- 园区列表 -->
+    <scroll-view class="adjust-garden-scroll" scroll-y>
+      <view wx:for="{{gardens}}" wx:key="gardenId" class="adjust-garden-row">
+        <text class="adjust-garden-name">{{item.name}}</text>
+        <view class="adjust-garden-controls">
+          <view class="adj-btn minus" data-garden-id="{{item.gardenId}}" data-delta="-5" bindtap="quickAdjustRow">-5</view>
+          <view class="adj-btn minus" data-garden-id="{{item.gardenId}}" data-delta="-1" bindtap="quickAdjustRow">-1</view>
+          <view class="adjust-garden-val-area">
+            <text class="adjust-garden-original">{{adjustRowOriginals[item.gardenId]}}</text>
+            <text class="adjust-garden-arrow">→</text>
+            <text class="adjust-garden-final {{adjustRowDeltas[item.gardenId] > 0 ? 'val-up' : adjustRowDeltas[item.gardenId] < 0 ? 'val-down' : ''}}">{{adjustRowOriginals[item.gardenId] + (adjustRowDeltas[item.gardenId] || 0)}}</text>
+            <text wx:if="{{adjustRowDeltas[item.gardenId]}}" class="adjust-garden-delta {{adjustRowDeltas[item.gardenId] > 0 ? 'delta-up' : 'delta-down'}}">{{adjustRowDeltas[item.gardenId] > 0 ? '+' : ''}}{{adjustRowDeltas[item.gardenId]}}</text>
+          </view>
+          <view class="adj-btn plus" data-garden-id="{{item.gardenId}}" data-delta="1" bindtap="quickAdjustRow">+1</view>
+          <view class="adj-btn plus" data-garden-id="{{item.gardenId}}" data-delta="5" bindtap="quickAdjustRow">+5</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 底部按钮 -->
+    <view class="adjust-modal-actions">
+      <view class="adjust-act-btn act-reset" bindtap="resetAdjust">还原全部</view>
+      <view class="adjust-act-btn act-confirm" bindtap="confirmAdjust">确定</view>
+    </view>
   </view>
 </view>
 

@@ -5,6 +5,27 @@
   background: #f5f5f5;
 }
 
+/* ====== 顶部提示条 ====== */
+.page-tip-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  margin-bottom: 20rpx;
+  background: #e3f2fd;
+  border-radius: 12rpx;
+}
+
+.page-tip-icon {
+  font-size: 26rpx;
+  margin-right: 8rpx;
+}
+
+.page-tip-text {
+  font-size: 24rpx;
+  color: #1565C0;
+}
+
 /* 表格卡片 */
 .table-card {
   background: #fff;
@@ -64,6 +85,10 @@
   border-bottom: none;
 }
 
+.table-data-row:active {
+  background: #f0f7ff;
+}
+
 .th {
   font-size: 24rpx;
   color: #666;
@@ -116,11 +141,38 @@
 .td-amount {
   min-width: 140rpx;
   color: #ccc;
+  flex-direction: column;
+  position: relative;
 }
 
 .td-amount.has-value {
   color: #FF9800;
   font-weight: bold;
+}
+
+.td-amount.adjusted {
+  background: #fff8e1;
+  border-radius: 8rpx;
+}
+
+.amount-val {
+  font-size: 26rpx;
+  line-height: 1.2;
+}
+
+.adjust-badge {
+  font-size: 18rpx;
+  line-height: 1;
+  font-weight: bold;
+  margin-top: 2rpx;
+}
+
+.badge-up {
+  color: #4CAF50;
+}
+
+.badge-down {
+  color: #F44336;
 }
 
 .td-unit {
@@ -249,4 +301,186 @@
 .save-record-btn.saved {
   background-color: #a5d6a7 !important;
   color: #fff !important;
+}
+
+/* ====== 配料调整弹窗（居中模式） ====== */
+.adjust-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.adjust-modal {
+  width: 620rpx;
+  max-height: 75vh;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 36rpx 32rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.adjust-modal-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 28rpx;
+}
+
+.adjust-modal-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.adjust-modal-unit {
+  font-size: 26rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+/* 园区列表滚动区 */
+.adjust-garden-scroll {
+  max-height: 50vh;
+  margin-bottom: 28rpx;
+}
+
+.adjust-garden-row {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.adjust-garden-row:last-child {
+  border-bottom: none;
+}
+
+.adjust-garden-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.adjust-garden-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+/* 加减按钮 */
+.adj-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 30rpx;
+  font-size: 22rpx;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.adj-btn.minus {
+  background: #ffebee;
+  color: #F44336;
+}
+
+.adj-btn.plus {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.adj-btn:active {
+  opacity: 0.6;
+  transform: scale(0.9);
+}
+
+/* 数值展示区域 */
+.adjust-garden-val-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  min-width: 200rpx;
+}
+
+.adjust-garden-original {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.adjust-garden-arrow {
+  font-size: 24rpx;
+  color: #ccc;
+}
+
+.adjust-garden-final {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.adjust-garden-final.val-up {
+  color: #4CAF50;
+}
+
+.adjust-garden-final.val-down {
+  color: #F44336;
+}
+
+.adjust-garden-delta {
+  font-size: 20rpx;
+  font-weight: bold;
+}
+
+.delta-up {
+  color: #4CAF50;
+}
+
+.delta-down {
+  color: #F44336;
+}
+
+/* 底部操作按钮 */
+.adjust-modal-actions {
+  display: flex;
+  gap: 20rpx;
+}
+
+.adjust-act-btn {
+  flex: 1;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 38rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.act-reset {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.act-reset:active {
+  background: #e0e0e0;
+}
+
+.act-confirm {
+  background: #FF9800;
+  color: #fff;
+}
+
+.act-confirm:active {
+  background: #F57C00;
 }
