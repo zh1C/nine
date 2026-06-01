@@ -38,6 +38,8 @@ Page({
 
     // 保存原始数据用于存云数据库
     this._rawData = data;
+    // 历史记录对应的云端记录 id（仅历史模式存在）
+    this._recordId = data.recordId || "";
   },
 
   // ========== 配料微调（整行模式） ==========
@@ -199,7 +201,7 @@ Page({
 
     const padding = 30;
     const rowHeight = 44;
-    const headerHeight = 80;
+    const headerHeight = 96;
     const tableHeaderHeight = 44;
     const colNameWidth = 120;
     const colGardenWidth = 80;
@@ -226,13 +228,15 @@ Page({
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      // 标题
+      // 标题（两行：主标题 + 配料数量）
       ctx.fillStyle = "#4CAF50";
       ctx.fillRect(0, 0, canvasWidth, headerHeight);
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 22px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`📋 ${table.dateLabel} 配料清单`, canvasWidth / 2, headerHeight / 2 + 8);
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(`📋 ${table.dateLabel} 配料清单`, canvasWidth / 2, 38);
+      ctx.font = "14px sans-serif";
+      ctx.fillText(`🥗 共 ${table.rows.length} 种配料`, canvasWidth / 2, 70);
 
       let y = headerHeight + 10;
 
@@ -477,7 +481,7 @@ Page({
 
     const padding = 30;
     const rowHeight = 44;
-    const headerHeight = 80;
+    const headerHeight = 96;
     const tableHeaderHeight = 44;
     const colNameWidth = 120;
     const colGardenWidth = 80;
@@ -490,9 +494,11 @@ Page({
     ctx.setFillStyle("#4CAF50");
     ctx.fillRect(0, 0, canvasWidth, headerHeight);
     ctx.setFillStyle("#ffffff");
-    ctx.setFontSize(22);
     ctx.setTextAlign("center");
-    ctx.fillText(`${table.dateLabel} 配料清单`, canvasWidth / 2, headerHeight / 2 + 8);
+    ctx.setFontSize(22);
+    ctx.fillText(`${table.dateLabel} 配料清单`, canvasWidth / 2, 38);
+    ctx.setFontSize(14);
+    ctx.fillText(`共 ${table.rows.length} 种配料`, canvasWidth / 2, 70);
 
     let y = headerHeight + 10;
 
@@ -576,14 +582,14 @@ Page({
     }
   },
 
-  // ========== 保存记录到云数据库 ==========
+  // ========== 保存记录到云数据库（新建） ==========
   async saveRecord() {
     this.setData({ saving: true });
     wx.showLoading({ title: "保存中..." });
 
     try {
-      const { summary, gardens, selectedDates, adjustments } = this.data;
-      const finalTables = this.buildFinalTables();
+      // 口径A：tables 存“原始值”，adjustments 单独存增量（展示/导出时再叠加）
+      const { tables, summary, gardens, selectedDates, adjustments } = this.data;
 
       const app = getApp();
       const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
@@ -594,7 +600,7 @@ Page({
           type: "saveRecord",
           username,
           selectedDates,
-          tables: finalTables,
+          tables,
           summary,
           gardens,
           adjustments: Object.keys(adjustments).length > 0 ? adjustments : undefined,
@@ -610,6 +616,61 @@ Page({
     } catch (e) {
       console.error(e);
       wx.showToast({ title: "保存失败", icon: "none" });
+    } finally {
+      this.setData({ saving: false });
+      wx.hideLoading();
+    }
+  },
+
+  // ========== 更新已有记录（历史模式） ==========
+  async updateRecord() {
+    if (!this._recordId) {
+      wx.showToast({ title: "记录ID缺失", icon: "none" });
+      return;
+    }
+
+    this.setData({ saving: true });
+    wx.showLoading({ title: "更新中..." });
+
+    try {
+      // 口径A：tables 存“原始值”，adjustments 单独存增量
+      const { tables, summary, gardens, selectedDates, adjustments } = this.data;
+
+      const app = getApp();
+      const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
+
+      const res = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "updateRecord",
+          recordId: this._recordId,
+          username,
+          selectedDates,
+          tables,
+          summary,
+          gardens,
+          adjustments: Object.keys(adjustments).length > 0 ? adjustments : undefined,
+        },
+      });
+
+      if (res.result.success) {
+        this.setData({ saved: true });
+        wx.showToast({ title: "已更新", icon: "success" });
+
+        // 通知历史页刷新
+        const pages = getCurrentPages();
+        const prevPage = pages[pages.length - 2];
+        if (prevPage && prevPage.route && prevPage.route.indexOf("pages/history/history") > -1) {
+          prevPage._needRefresh = true;
+        }
+
+        setTimeout(() => wx.navigateBack(), 800);
+      } else {
+        wx.showToast({ title: res.result.errMsg || "更新失败", icon: "none" });
+      }
+    } catch (e) {
+      console.error(e);
+      wx.showToast({ title: "更新失败", icon: "none" });
     } finally {
       this.setData({ saving: false });
       wx.hideLoading();

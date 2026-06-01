@@ -120,6 +120,7 @@ Page({
         const record = res.result.data;
         // 将记录数据存入全局，跳转到结果页展示
         app.globalData.calculateResult = {
+          recordId,
           tables: record.tables,
           summary: record.summary,
           gardens: record.gardens,

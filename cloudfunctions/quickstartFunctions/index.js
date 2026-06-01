@@ -813,6 +813,45 @@ const saveRecord = async (event) => {
   }
 };
 
+// 更新已有计算记录
+const updateRecord = async (event) => {
+  try {
+    const { recordId, username, selectedDates, tables, summary, gardens, adjustments } = event;
+    if (!recordId || !username) {
+      return { success: false, errMsg: "参数不完整" };
+    }
+    // 鉴权：确认记录归属当前用户
+    const record = await db.collection("records").doc(recordId).get();
+    if (!record.data) {
+      return { success: false, errMsg: "记录不存在" };
+    }
+    if (record.data.username !== username) {
+      return { success: false, errMsg: "无权修改此记录" };
+    }
+
+    const updateData = {
+      selectedDates: selectedDates || [],
+      tables: tables || [],
+      summary: summary || {},
+      gardens: gardens || [],
+      updateTime: db.serverDate(),
+    };
+    // 有调整记录则更新，否则显式移除该字段
+    if (adjustments && Object.keys(adjustments).length > 0) {
+      updateData.adjustments = adjustments;
+    } else {
+      updateData.adjustments = _.remove();
+    }
+
+    await db.collection("records").doc(recordId).update({
+      data: updateData,
+    });
+    return { success: true, data: { _id: recordId } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "更新记录失败" };
+  }
+};
+
 // 获取历史记录
 const getRecords = async (event) => {
   try {
@@ -972,6 +1011,8 @@ exports.main = async (event, context) => {
     // 记录模块
     case "saveRecord":
       return await saveRecord(event);
+    case "updateRecord":
+      return await updateRecord(event);
     case "getRecords":
       return await getRecords(event);
     case "getRecordDetail":

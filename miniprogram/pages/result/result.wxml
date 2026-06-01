@@ -10,6 +10,11 @@
   <view wx:for="{{tables}}" wx:for-index="tableIdx" wx:key="date" class="table-card">
     <view class="table-card-header">
       <text class="table-card-title">📋 {{item.dateLabel}} 配料清单</text>
+      <view class="table-card-count">
+        <text class="count-icon">🥗</text>
+        <text class="count-num">{{item.rows.length}}</text>
+        <text class="count-unit">种配料</text>
+      </view>
     </view>
 
     <view class="table-wrapper">
@@ -104,9 +109,14 @@
   </view>
 
   <!-- 底部操作按钮 -->
-  <view class="bottom-actions" wx:if="{{!fromHistory}}">
-    <button class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved}}">
+  <view class="bottom-actions">
+    <!-- 新建计算：保存为新记录 -->
+    <button wx:if="{{!fromHistory}}" class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved}}">
       {{saved ? '☁️ 已保存到云端' : '📥 保存记录到云端'}}
+    </button>
+    <!-- 历史记录：更新原记录 -->
+    <button wx:else class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="updateRecord" loading="{{saving}}" disabled="{{saved}}">
+      {{saved ? '✅ 已更新' : '💾 更新此记录'}}
     </button>
   </view>
 </view>

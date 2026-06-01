@@ -38,6 +38,9 @@
 .table-card-header {
   background: linear-gradient(135deg, #4CAF50, #66BB6A);
   padding: 24rpx 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .summary-header {
@@ -48,6 +51,33 @@
   font-size: 30rpx;
   font-weight: bold;
   color: #fff;
+}
+
+.table-card-count {
+  display: flex;
+  align-items: baseline;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 4rpx 16rpx;
+  border-radius: 24rpx;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+.count-icon {
+  font-size: 22rpx;
+}
+
+.count-num {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #fff;
+  margin: 0 4rpx;
+}
+
+.count-unit {
+  font-size: 22rpx;
+  color: #fff;
+  opacity: 0.9;
 }
 
 /* 表格 */
