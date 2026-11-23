@@ -1,6 +1,22 @@
 <!--pages/calculate/calculate.wxml-->
 <page-meta page-style="{{showPicker ? 'overflow: hidden;' : ''}}" />
 <view class="calculate-page">
+  <view wx:if="{{draftChoices.length}}" class="card">
+    <view class="draft-header">
+      <text class="section-title">本地未保存草稿（{{draftChoices.length}}）</text>
+      <text class="draft-toggle" bindtap="toggleDraftChoices">{{showDraftChoices ? '暂不恢复' : '展开'}}</text>
+    </view>
+    <block wx:if="{{showDraftChoices}}">
+      <view class="draft-item" wx:for="{{draftChoices}}" wx:key="key">
+        <view class="draft-info">
+          <text>{{item.dateLabel}}</text>
+          <text class="draft-time">{{item.timeLabel}}</text>
+        </view>
+        <view class="dish-detail-btn" data-key="{{item.key}}" bindtap="restoreDraft">{{item.hasResult ? '恢复清单' : '继续选菜'}}</view>
+        <view class="draft-discard" data-key="{{item.key}}" bindtap="discardDraft">丢弃</view>
+      </view>
+    </block>
+  </view>
   <!-- 页面加载中 -->
   <view wx:if="{{pageLoading}}" class="page-loading">
     <view class="loading-spinner"></view>
@@ -138,7 +154,7 @@
 
   <!-- 计算按钮 -->
   <button class="calculate-btn" bindtap="handleCalculate" wx:if="{{selectedDates.length > 0}}">
-    开始计算 →
+    {{hasDraftResult ? '查看配料清单' : '开始计算'}} →
   </button>
   </block>
 

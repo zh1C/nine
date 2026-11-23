@@ -1,5 +1,7 @@
 // pages/result/result.js
 const { unitOptions, createRow, sortRows, appendOrMerge, readTables } = require("../../utils/ingredientTable");
+const drafts = require("../../utils/calculateDraft");
+const pendingSaves = new Set();
 
 function parseAmount(value) {
   const text = String(value).trim();
@@ -30,19 +32,25 @@ Page({
 
   onLoad(options) {
     const record = getApp().globalData.calculateResult;
-    if (!record || (options.from === "history" && !record.recordId)) {
+    if (!record || (options.from === "history" && !record.recordId) ||
+        (record.draftSession && record.draftSession.owner !== drafts.username())) {
       wx.showToast({ title: "清单数据缺失", icon: "none" });
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
     this._revision = record.revision || 0;
+    this._editVersion = 0;
+    this._owner = drafts.username();
+    this._session = record.draftSession;
+    this._draftRef = this._session && this._session.ref;
+    this._menu = record.menu;
     this.setData({
       tables: readTables(record),
       summary: record.summary,
       gardens: record.gardens,
       selectedDates: record.selectedDates,
       recordId: record.recordId || "",
-      saved: !!record.recordId,
+      saved: !!record.recordId && !this._draftRef,
     });
   },
 
@@ -109,6 +117,28 @@ Page({
 
   commitRows(date, rows) {
     const tables = this.data.tables.map(table => table.date === date ? { ...table, rows } : table);
+    if (this._session) {
+      if (this._session.owner !== drafts.username()) {
+        wx.showToast({ title: "账号已切换，请重新打开清单", icon: "none" });
+        return;
+      }
+      const { selectedDates, summary, gardens, recordId } = this.data;
+      try {
+        const next = drafts.write(this._owner, this._draftRef, this._menu, {
+          schemaVersion: 2, tables, selectedDates, summary, gardens, recordId, revision: this._revision,
+        });
+        if (!next) {
+          wx.showToast({ title: "草稿已变更，请返回后重新打开", icon: "none" });
+          return;
+        }
+        this._draftRef = next;
+        this._session.ref = next;
+      } catch (e) {
+        wx.showToast({ title: "本地草稿写入失败，请检查存储空间后重试", icon: "none" });
+        return;
+      }
+    }
+    this._editVersion++;
     this.setData({ tables, editor: null, saved: false });
   },
 
@@ -577,18 +607,44 @@ Page({
   },
 
   async saveRecord() {
-    const { saving, saved, recordId, selectedDates, tables, summary, gardens } = this.data;
+    const { saving, saved, selectedDates, tables, summary, gardens } = this.data;
     if (saving || saved) return;
+    const username = this._owner;
+    if (username !== drafts.username() || (this._session && this._session.owner !== username)) {
+      wx.showToast({ title: "账号已切换，请重新打开清单", icon: "none" });
+      return;
+    }
+    const ref = this._draftRef;
+    const editVersion = this._editVersion;
+    let recordId = this.data.recordId;
+    let revision = this._revision;
+    if (ref) {
+      if (pendingSaves.has(ref.key)) {
+        wx.showToast({ title: "这份清单正在保存", icon: "none" });
+        return;
+      }
+      try {
+        const current = drafts.read(username, ref.key);
+        if (!current || current.version !== ref.version || !current.result) {
+          wx.showToast({ title: "草稿已变更，请返回后重新打开", icon: "none" });
+          return;
+        }
+        recordId = current.result.recordId || "";
+        revision = current.result.revision || 0;
+      } catch (e) {
+        wx.showToast({ title: "本地草稿读取失败，请重试", icon: "none" });
+        return;
+      }
+      pendingSaves.add(ref.key);
+    }
     this.setData({ saving: true });
     wx.showLoading({ title: "保存中...", mask: true });
     try {
-      const user = getApp().globalData.userInfo;
       const res = await wx.cloud.callFunction({
         name: "quickstartFunctions",
         data: {
           type: recordId ? "updateRecord" : "saveRecord",
-          username: user ? user.username : "",
-          recordId, revision: this._revision, schemaVersion: 2,
+          username, recordId, revision, schemaVersion: 2,
           selectedDates, tables, summary, gardens,
         },
       });
@@ -596,16 +652,36 @@ Page({
         wx.showToast({ title: res.result.errMsg || "保存失败", icon: "none" });
         return;
       }
-      this._revision = res.result.data.revision;
-      this.setData({ recordId: res.result.data._id, saved: true });
+      const stored = res.result.data;
+      if (!stored || !stored._id || !Number.isSafeInteger(stored.revision) || stored.revision < 1 ||
+          (recordId && stored._id !== recordId)) {
+        wx.showToast({ title: "未收到完整保存回执，请检查历史记录", icon: "none" });
+        return;
+      }
+      let notice = recordId ? "已更新" : "保存成功";
+      let icon = "success";
+      if (ref) {
+        try {
+          if (drafts.acknowledge(username, ref, stored)) {
+            if (this._session.ref === ref) this._session.ref = null;
+            if (this._draftRef === ref) this._draftRef = null;
+          }
+        } catch (e) {
+          notice = "已保存到云端，本地草稿清理失败";
+          icon = "none";
+        }
+      }
+      this._revision = stored.revision;
+      this.setData({ recordId: stored._id, saved: editVersion === this._editVersion });
       const pages = getCurrentPages();
       const previous = pages[pages.length - 2];
       if (previous && previous.route === "pages/history/history") previous._needRefresh = true;
-      wx.showToast({ title: recordId ? "已更新" : "保存成功", icon: "success" });
+      wx.showToast({ title: notice, icon });
     } catch (e) {
       console.error(e);
       wx.showToast({ title: "保存失败，请重试", icon: "none" });
     } finally {
+      if (ref) pendingSaves.delete(ref.key);
       this.setData({ saving: false });
       wx.hideLoading();
     }

@@ -1,5 +1,13 @@
 // pages/calculate/calculate.js
 const { createRow, sortRows } = require("../../utils/ingredientTable");
+const drafts = require("../../utils/calculateDraft");
+
+function menuDish(dish) {
+  return {
+    _id: dish._id, name: dish.name, imageFileID: dish.imageFileID || "",
+    ingredients: dish.ingredients || [], ratios: dish.ratios || {},
+  };
+}
 
 Page({
   data: {
@@ -30,6 +38,9 @@ Page({
 
     pageLoading: true, // 页面级loading，两个请求都完成后才显示内容
     loadError: false, // 加载是否出错
+    draftChoices: [],
+    showDraftChoices: true,
+    hasDraftResult: false,
 
     // 配料详情弹窗
     showDetail: false,
@@ -41,6 +52,7 @@ Page({
 
   async onLoad(options) {
     this._fromHistory = options && options.from === 'history';
+    this._session = { owner: drafts.username(), ref: null };
     const now = new Date();
     this.setData({
       currentYear: now.getFullYear(),
@@ -49,23 +61,11 @@ Page({
       loadError: false,
     });
     this.generateCalendar();
-    // 并发加载园区和菜品数据，全部完成后关闭loading
-    try {
-      await Promise.all([this.loadGardens(), this.loadAllDishes()]);
-    } catch (e) {
-      console.error('页面数据加载失败', e);
-      this.setData({ loadError: true });
-    } finally {
-      this.setData({ pageLoading: false });
-    }
-    // 数据加载完成后恢复
-    if (!this.data.loadError) {
-      if (this._fromHistory) {
-        this.restoreFromHistory();
-      } else {
-        this.tryRestoreDraft();
-      }
-    }
+    return this.retryLoad();
+  },
+
+  onShow() {
+    this.refreshDraftChoices();
   },
 
   // 重新加载
@@ -73,11 +73,14 @@ Page({
     this.setData({ pageLoading: true, loadError: false });
     try {
       await Promise.all([this.loadGardens(), this.loadAllDishes()]);
+      if (this._fromHistory) this.restoreFromHistory();
+      else this.updateCurrentCategoryView();
     } catch (e) {
       console.error('页面数据加载失败', e);
       this.setData({ loadError: true });
     } finally {
       this.setData({ pageLoading: false });
+      this.refreshDraftChoices();
     }
   },
 
@@ -135,27 +138,19 @@ Page({
   toggleDate(e) {
     const date = e.currentTarget.dataset.date;
     if (!date) return;
-    let selectedDates = [...this.data.selectedDates];
+    const selectedDates = [...this.data.selectedDates];
+    const dailyDishes = { ...this.data.dailyDishes };
     const idx = selectedDates.indexOf(date);
     if (idx > -1) {
       selectedDates.splice(idx, 1);
       // 同时移除该天的菜品数据
-      const dailyDishes = { ...this.data.dailyDishes };
       delete dailyDishes[date];
-      this.setData({ selectedDates: selectedDates.sort(), dailyDishes });
     } else {
       selectedDates.push(date);
       selectedDates.sort();
-      this.setData({ selectedDates });
     }
-    // 调整 currentDateIdx
-    if (selectedDates.length > 0 && this.data.currentDateIdx >= selectedDates.length) {
-      this.setData({ currentDateIdx: selectedDates.length - 1 });
-    }
-    this.refreshCalendarSelection();
-    this.buildDateTabList();
-    this.updateCurrentCategoryView();
-    this.saveDraft();
+    const currentDateIdx = Math.max(0, Math.min(this.data.currentDateIdx, selectedDates.length - 1));
+    this.commitMenu({ selectedDates, dailyDishes, currentDateIdx });
   },
 
   // 判断当前是否有已配置菜品
@@ -170,17 +165,15 @@ Page({
 
   // 应用快捷选择：更新日期并清理孤儿菜品数据
   applyQuickSelect(dates) {
+    const previous = this.data.selectedDates;
+    if (dates.length === previous.length && dates.every((date, idx) => date === previous[idx])) return;
     const dailyDishes = { ...this.data.dailyDishes };
     Object.keys(dailyDishes).forEach(key => {
       if (dates.indexOf(key) === -1) {
         delete dailyDishes[key];
       }
     });
-    this.setData({ selectedDates: dates, currentDateIdx: 0, dailyDishes });
-    this.refreshCalendarSelection();
-    this.buildDateTabList();
-    this.updateCurrentCategoryView();
-    this.saveDraft();
+    this.commitMenu({ selectedDates: dates, currentDateIdx: 0, dailyDishes });
   },
 
   // 快捷选择：本周剩余
@@ -333,9 +326,8 @@ Page({
       name: "quickstartFunctions",
       data: { type: "getAllDishes", username },
     });
-    if (res.result.success) {
-      this.setData({ allDishes: res.result.data.list });
-    }
+    if (!res.result.success) throw new Error(res.result.errMsg || "加载菜品失败");
+    this.setData({ allDishes: res.result.data.list });
   },
 
   async loadGardens() {
@@ -345,9 +337,8 @@ Page({
       name: "quickstartFunctions",
       data: { type: "getGardens", operatorUsername: username },
     });
-    if (res.result.success) {
-      this.setData({ gardens: res.result.data.list });
-    }
+    if (!res.result.success) throw new Error(res.result.errMsg || "加载园区失败");
+    this.setData({ gardens: res.result.data.list });
   },
 
   showDishPicker() {
@@ -371,13 +362,7 @@ Page({
     const dishes = [...(dayData[dailySubTab] || [])];
     // 避免重复添加
     if (dishes.some((d) => d._id === dish._id)) return;
-    dishes.push({
-      _id: dish._id,
-      name: dish.name,
-      imageFileID: dish.imageFileID || "",
-      ingredients: dish.ingredients || [],
-      ratios: dish.ratios || {},
-    });
+    dishes.push(menuDish(dish));
     this.saveCategoryDishes(currentDate, dishes);
   },
 
@@ -394,10 +379,7 @@ Page({
   saveCategoryDishes(date, dishes) {
     const { dailyDishes, dailySubTab } = this.data;
     const day = dailyDishes[date] || { student: [], teacher: [] };
-    this.setData({ dailyDishes: { ...dailyDishes, [date]: { ...day, [dailySubTab]: dishes } } });
-    this.buildDateTabList();
-    this.updateCurrentCategoryView();
-    this.saveDraft();
+    this.commitMenu({ dailyDishes: { ...dailyDishes, [date]: { ...day, [dailySubTab]: dishes } } });
   },
 
   // ========== 配料详情弹窗 ==========
@@ -447,6 +429,18 @@ Page({
   // ========== 计算逻辑 ==========
   handleCalculate() {
     const { selectedDates, dailyDishes, gardens } = this.data;
+    const { owner, ref } = this._session;
+    try {
+      const current = ref && drafts.read(owner, ref.key);
+      if (current && current.result && (current.menuVersion || 0) === ref.menuVersion) {
+        if (current.version !== ref.version) this._session.ref = drafts.reference(ref.key, current);
+        this.openResult(current.result);
+        return;
+      }
+    } catch (e) {
+      wx.showToast({ title: "本地草稿读取失败，请重试", icon: "none" });
+      return;
+    }
 
     if (selectedDates.length === 0) {
       wx.showToast({ title: "请选择日期", icon: "none" });
@@ -605,20 +599,15 @@ Page({
       });
     });
 
-    // 存入全局，跳转结果页
-    const app = getApp();
-    app.globalData.calculateResult = {
+    const result = {
       schemaVersion: 2,
       tables,
       summary,
       gardens: gardens.map((g) => ({ gardenId: g.gardenId, name: g.name })),
       selectedDates,
-      dailyDishes, // 用于保存记录
     };
-
-    // 计算成功，清除草稿
-    this.clearDraft();
-    wx.navigateTo({ url: "/pages/result/result" });
+    const menu = drafts.captureMenu(this.data);
+    if (this.persistDraft(menu, result)) this.openResult(result, menu);
   },
 
   // ========== 从历史记录恢复 ==========
@@ -660,29 +649,13 @@ Page({
       const studentDishes = [];
       studentNames.forEach(name => {
         const d = dishMap[`${name}_student`];
-        if (d) {
-          studentDishes.push({
-            _id: d._id,
-            name: d.name,
-            imageFileID: d.imageFileID || '',
-            ingredients: d.ingredients || [],
-            ratios: d.ratios || {},
-          });
-        }
+        if (d) studentDishes.push(menuDish(d));
       });
 
       const teacherDishes = [];
       teacherNames.forEach(name => {
         const d = dishMap[`${name}_teacher`];
-        if (d) {
-          teacherDishes.push({
-            _id: d._id,
-            name: d.name,
-            imageFileID: d.imageFileID || '',
-            ingredients: d.ingredients || [],
-            ratios: d.ratios || {},
-          });
-        }
+        if (d) teacherDishes.push(menuDish(d));
       });
 
       dailyDishes[date] = { student: studentDishes, teacher: teacherDishes };
@@ -707,118 +680,143 @@ Page({
     app.globalData.editRecord = null;
   },
 
-  // ========== 草稿缓存 ==========
-  getDraftKey() {
-    const app = getApp();
-    const username = (app.globalData.userInfo && app.globalData.userInfo.username) || 'default';
-    return `calculate_draft_${username}`;
+  // ========== 本地草稿 ==========
+  refreshDraftChoices() {
+    const { owner, ref } = this._session;
+    if (owner !== drafts.username()) return;
+    try {
+      const choices = drafts.list(owner);
+      const latest = ref && choices.find(item => item.key === ref.key);
+      const active = latest && latest.menuVersion === ref.menuVersion ? latest : null;
+      if (!latest) this._session.ref = null;
+      if (active && active.version !== ref.version) this._session.ref = drafts.reference(ref.key, active);
+      this.setData({
+        hasDraftResult: !!(active && active.hasResult),
+        draftChoices: this._fromHistory ? [] : choices.filter(item =>
+          item !== active || (item.hasResult && (this.data.pageLoading || this.data.loadError))),
+      });
+    } catch (e) {
+      wx.showToast({ title: "本地草稿读取失败，请重试", icon: "none" });
+    }
   },
 
-  saveDraft() {
-    const { selectedDates, dailyDishes, dailySubTab, currentDateIdx } = this.data;
-    const key = this.getDraftKey();
-    // 没有选择日期时清除草稿
-    if (selectedDates.length === 0) {
-      wx.removeStorageSync(key);
+  toggleDraftChoices() {
+    this.setData({ showDraftChoices: !this.data.showDraftChoices });
+  },
+
+  persistDraft(menu, result = null) {
+    const { owner, ref } = this._session;
+    if (owner !== drafts.username()) {
+      wx.showToast({ title: "账号已切换，请重新进入生成配料", icon: "none" });
+      return false;
+    }
+    try {
+      const next = drafts.write(owner, ref, menu, result);
+      if (!next) {
+        this.refreshDraftChoices();
+        wx.showToast({ title: "草稿已变更，请重新打开", icon: "none" });
+        return false;
+      }
+      this._session = { owner, ref: next };
+      if (!ref || this.data.hasDraftResult !== !!result) this.refreshDraftChoices();
+      return true;
+    } catch (e) {
+      wx.showToast({ title: "本地草稿写入失败，请检查存储空间后重试", icon: "none" });
+      return false;
+    }
+  },
+
+  commitMenu(changes) {
+    const menu = drafts.captureMenu({ ...this.data, ...changes });
+    if (!this.persistDraft(menu)) {
+      this.updateCurrentCategoryView();
       return;
     }
-    // 只保存 _id 列表，不保存完整菜品数据
-    const dailyDishIds = {};
-    Object.keys(dailyDishes).forEach(date => {
-      const dayData = dailyDishes[date] || {};
-      dailyDishIds[date] = {
-        student: (dayData.student || []).map(d => d._id),
-        teacher: (dayData.teacher || []).map(d => d._id),
-      };
-    });
-    wx.setStorageSync(key, {
-      selectedDates,
-      dailyDishIds,
-      dailySubTab,
-      currentDateIdx,
-      savedAt: Date.now(),
+    this.setData(changes);
+    this.refreshCalendarSelection();
+    this.buildDateTabList();
+    this.updateCurrentCategoryView();
+  },
+
+  openResult(result, menu = drafts.captureMenu(this.data)) {
+    getApp().globalData.calculateResult = {
+      ...result,
+      draftSession: this._session,
+      menu,
+    };
+    wx.navigateTo({
+      url: "/pages/result/result",
+      fail: () => wx.showToast({ title: "打开失败，草稿已保留", icon: "none" }),
     });
   },
 
-  tryRestoreDraft() {
-    const { allDishes } = this.data;
-    // allDishes 加载失败时不恢复草稿
-    if (!allDishes || allDishes.length === 0) {
-      wx.showToast({ title: '菜品数据未加载，草稿恢复失败', icon: 'none' });
+  restoreDraft(e) {
+    const key = e.currentTarget.dataset.key;
+    const { owner } = this._session;
+    let draft;
+    try {
+      draft = drafts.read(owner, key);
+    } catch (err) {
+      wx.showToast({ title: "本地草稿读取失败，请重试", icon: "none" });
+      return;
+    }
+    if (!draft) {
+      this.refreshDraftChoices();
       return;
     }
 
-    const key = this.getDraftKey();
-    const draft = wx.getStorageSync(key);
-    if (!draft || !draft.selectedDates || draft.selectedDates.length === 0) return;
-
-    // 7天过期自动清除
-    const expireMs = 7 * 24 * 60 * 60 * 1000;
-    if (Date.now() - draft.savedAt > expireMs) {
-      wx.removeStorageSync(key);
+    const { selectedDates, dailyDishIds = {}, dishesById } = draft;
+    if (!dishesById && (this.data.pageLoading || this.data.loadError)) {
+      wx.showToast({ title: "请先加载菜品，再恢复旧草稿", icon: "none" });
       return;
     }
+    const catalog = dishesById || {};
+    if (!dishesById) this.data.allDishes.forEach(dish => { catalog[dish._id] = menuDish(dish); });
+    const dailyDishes = {};
+    let missing = false;
+    for (const date of selectedDates) {
+      const ids = dailyDishIds[date] || {};
+      const day = {};
+      for (const category of ["student", "teacher"]) {
+        const dishes = (ids[category] || []).map(id => catalog[id]);
+        if (dishes.some(d => !d)) missing = true;
+        day[category] = dishes.filter(Boolean);
+      }
+      dailyDishes[date] = day;
+    }
+    this._session = { owner, ref: drafts.reference(key, draft) };
+    const currentDateIdx = Math.max(0, Math.min(draft.currentDateIdx || 0, selectedDates.length - 1));
+    const date = selectedDates[currentDateIdx];
+    this.setData({
+      selectedDates, dailyDishes, currentDateIdx, dailySubTab: draft.dailySubTab || "student",
+      ...(date ? { currentYear: Number(date.slice(0, 4)), currentMonth: Number(date.slice(5, 7)) } : {}),
+    });
+    this.generateCalendar();
+    this.buildDateTabList();
+    this.updateCurrentCategoryView();
+    this.refreshDraftChoices();
+    if (draft.result) this.openResult(draft.result);
+    else if (missing) wx.showToast({ title: "部分菜品已移除，已恢复现有菜品", icon: "none" });
+  },
 
+  discardDraft(e) {
+    const ref = this.data.draftChoices.find(item => item.key === e.currentTarget.dataset.key);
+    if (!ref) return;
+    const { owner } = this._session;
     wx.showModal({
-      title: '恢复配料草稿',
-      content: '检测到上次未完成的配料选择，是否继续？',
-      confirmText: '继续',
-      cancelText: '重新开始',
-      success: (res) => {
-        if (res.confirm) {
-          // 用 allDishes 构建 ID -> 菜品 的映射
-          const dishMap = {};
-          allDishes.forEach(d => { dishMap[d._id] = d; });
-
-          // 根据 _id 列表还原完整菜品数据
-          const dailyDishes = {};
-          const dailyDishIds = draft.dailyDishIds || {};
-          Object.keys(dailyDishIds).forEach(date => {
-            const dayIds = dailyDishIds[date] || {};
-            dailyDishes[date] = {
-              student: (dayIds.student || []).map(id => {
-                const d = dishMap[id];
-                if (!d) return null;
-                return {
-                  _id: d._id,
-                  name: d.name,
-                  imageFileID: d.imageFileID || '',
-                  ingredients: d.ingredients || [],
-                  ratios: d.ratios || {},
-                };
-              }).filter(Boolean),
-              teacher: (dayIds.teacher || []).map(id => {
-                const d = dishMap[id];
-                if (!d) return null;
-                return {
-                  _id: d._id,
-                  name: d.name,
-                  imageFileID: d.imageFileID || '',
-                  ingredients: d.ingredients || [],
-                  ratios: d.ratios || {},
-                };
-              }).filter(Boolean),
-            };
-          });
-
-          this.setData({
-            selectedDates: draft.selectedDates,
-            dailyDishes,
-            dailySubTab: draft.dailySubTab || 'student',
-            currentDateIdx: draft.currentDateIdx || 0,
-          });
-          this.refreshCalendarSelection();
-          this.buildDateTabList();
-          this.updateCurrentCategoryView();
-        } else {
-          wx.removeStorageSync(key);
+      title: "丢弃本地草稿？",
+      content: ref.dateLabel + " 的这份草稿将从本机删除。",
+      confirmText: "丢弃",
+      confirmColor: "#c0392b",
+      success: res => {
+        if (!res.confirm) return;
+        try {
+          if (!drafts.discard(owner, ref)) wx.showToast({ title: "草稿已变更，请重新确认", icon: "none" });
+        } catch (err) {
+          wx.showToast({ title: "删除草稿失败，请重试", icon: "none" });
         }
+        this.refreshDraftChoices();
       },
     });
-  },
-
-  clearDraft() {
-    const key = this.getDraftKey();
-    wx.removeStorageSync(key);
   },
 });

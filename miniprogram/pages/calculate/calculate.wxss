@@ -20,6 +20,19 @@
   margin-bottom: 20rpx;
 }
 
+.draft-header, .draft-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.draft-header .section-title { margin: 0; }
+.draft-toggle, .draft-discard { padding: 8rpx; font-size: 24rpx; color: #666; }
+.draft-item { padding-top: 16rpx; }
+.draft-info { flex: 1; display: flex; flex-direction: column; font-size: 26rpx; }
+.draft-time { margin-top: 4rpx; font-size: 22rpx; color: #666; }
+
 /* 日历 */
 .calendar-nav {
   display: flex;
