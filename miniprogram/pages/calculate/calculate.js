@@ -15,7 +15,7 @@ Page({
     dailyDishes: {}, // { '2026-05-09': { student: [...], teacher: [...] }, ... }
     dailySubTab: "student", // 当前子Tab: "student" | "teacher"
     showPicker: false,
-    pickerExcludeIds: [], // 当天已选菜品ID，传给picker用于过滤
+    pickerSelectedDishes: [], // 当前日期和餐别的已选菜名，按菜单顺序
     filteredDishes: [], // 根据当前子Tab过滤后的菜品列表
     currentCategoryDishes: [], // 当前日期+类型下的菜品
     studentDishCount: 0, // 当前日期下学生菜品数
@@ -266,7 +266,7 @@ Page({
   updateCurrentCategoryView() {
     const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes, gardens } = this.data;
     if (selectedDates.length === 0) {
-      this.setData({ currentCategoryDishes: [], studentDishCount: 0, teacherDishCount: 0, filteredDishes: [] });
+      this.setData({ currentCategoryDishes: [], pickerSelectedDishes: [], studentDishCount: 0, teacherDishCount: 0, filteredDishes: [] });
       return;
     }
     const currentDate = selectedDates[currentDateIdx];
@@ -296,6 +296,7 @@ Page({
 
     this.setData({
       currentCategoryDishes,
+      pickerSelectedDishes: rawDishes.map(({ _id, name }) => ({ _id, name })),
       studentDishCount: studentDishes.length,
       teacherDishCount: teacherDishes.length,
       filteredDishes,
@@ -350,21 +351,12 @@ Page({
   },
 
   showDishPicker() {
-    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, allDishes } = this.data;
-    if (selectedDates.length === 0) {
+    if (this.data.selectedDates.length === 0) {
       wx.showToast({ title: "请先选择日期", icon: "none" });
       return;
     }
-    const currentDate = selectedDates[currentDateIdx];
-    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
-    const currentDishes = dayData[dailySubTab] || [];
-    // 过滤allDishes：只显示对应category的菜品
-    const filteredDishes = allDishes.filter(d => (d.category || "student") === dailySubTab);
-    this.setData({
-      showPicker: true,
-      pickerExcludeIds: currentDishes.map((d) => d._id),
-      filteredDishes,
-    });
+    this.updateCurrentCategoryView();
+    this.setData({ showPicker: true });
   },
 
   onPickerClose() {
@@ -386,27 +378,23 @@ Page({
       ingredients: dish.ingredients || [],
       ratios: dish.ratios || {},
     });
-    const updatedDayData = { ...dayData, [dailySubTab]: dishes };
-    const updatedDailyDishes = { ...dailyDishes, [currentDate]: updatedDayData };
-    this.setData({
-      dailyDishes: updatedDailyDishes,
-      pickerExcludeIds: dishes.map((d) => d._id),
-    });
-    this.buildDateTabList();
-    this.updateCurrentCategoryView();
-    this.saveDraft();
+    this.saveCategoryDishes(currentDate, dishes);
   },
 
   removeDailyDish(e) {
-    const idx = e.currentTarget.dataset.idx;
+    const id = e.detail?.id ?? e.currentTarget.dataset.id;
     const { selectedDates, currentDateIdx, dailyDishes, dailySubTab } = this.data;
     const currentDate = selectedDates[currentDateIdx];
     const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
-    const dishes = [...(dayData[dailySubTab] || [])];
-    dishes.splice(idx, 1);
-    const updatedDayData = { ...dayData, [dailySubTab]: dishes };
-    const updatedDailyDishes = { ...dailyDishes, [currentDate]: updatedDayData };
-    this.setData({ dailyDishes: updatedDailyDishes });
+    const dishes = dayData[dailySubTab] || [];
+    const remaining = dishes.filter(dish => dish._id !== id);
+    if (remaining.length !== dishes.length) this.saveCategoryDishes(currentDate, remaining);
+  },
+
+  saveCategoryDishes(date, dishes) {
+    const { dailyDishes, dailySubTab } = this.data;
+    const day = dailyDishes[date] || { student: [], teacher: [] };
+    this.setData({ dailyDishes: { ...dailyDishes, [date]: { ...day, [dailySubTab]: dishes } } });
     this.buildDateTabList();
     this.updateCurrentCategoryView();
     this.saveDraft();

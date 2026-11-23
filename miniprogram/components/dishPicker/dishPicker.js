@@ -9,7 +9,7 @@ Component({
       type: String,
       value: "添加菜品",
     },
-    excludeIds: {
+    selectedDishes: {
       type: Array,
       value: [],
     },
@@ -25,6 +25,8 @@ Component({
     hasQuery: false,
     queryVersion: 0,
     keyboardMaxHeight: null,
+    reviewingSelected: false,
+    selectedPreview: "",
   },
 
   observers: {
@@ -33,15 +35,13 @@ Component({
         this._fullHeight = wx.getWindowInfo().windowHeight;
         this.setData({
           keyword: "", hasQuery: false, queryVersion: 0, keyboardMaxHeight: null,
-          dishes: this.matchingDishes(""),
+          reviewingSelected: false,
         });
+        this.refreshDishes();
       }
     },
-    "excludeIds, allDishes"() {
-      // excludeIds 或 allDishes 变化时，仅重新过滤列表，保留当前搜索关键词
-      if (this.properties.show) {
-        this.setData({ dishes: this.matchingDishes(this.data.keyword) });
-      }
+    "selectedDishes, allDishes"() {
+      if (this.properties.show) this.refreshDishes();
     },
   },
 
@@ -68,17 +68,35 @@ Component({
     },
 
     onKeyboardHeightChange(e) {
-      if (!this.properties.show) return;
+      if (!this.properties.show || this.data.reviewingSelected) return;
       const height = e.detail.height;
       // 以打开前的可用高度计算上限；若系统已缩小视口，固定面板自然取两者中较小的高度。
       this.setData({ keyboardMaxHeight: height > 0 ? Math.max(0, this._fullHeight - height) : null });
     },
 
     matchingDishes(keyword) {
-      const { allDishes, excludeIds } = this.properties;
+      const { allDishes, selectedDishes } = this.properties;
       const query = keyword.trim().toLowerCase();
-      const excluded = new Set(excludeIds);
+      const excluded = new Set(selectedDishes.map(dish => dish._id));
       return allDishes.filter(d => !excluded.has(d._id) && d.name.toLowerCase().includes(query));
+    },
+
+    refreshDishes() {
+      const names = this.properties.selectedDishes.map(dish => dish.name);
+      this.setData({
+        selectedPreview: names.reverse().join(" · "),
+        dishes: this.matchingDishes(this.data.keyword),
+      });
+    },
+
+    toggleSelectionView() {
+      const reviewingSelected = !this.data.reviewingSelected;
+      if (reviewingSelected) wx.hideKeyboard();
+      this.setData({ reviewingSelected, keyboardMaxHeight: null });
+    },
+
+    handleRemove(e) {
+      this.triggerEvent("remove", { id: e.currentTarget.dataset.id });
     },
 
     handleAdd(e) {

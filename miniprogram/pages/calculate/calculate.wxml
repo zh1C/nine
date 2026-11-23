@@ -121,7 +121,7 @@
           </view>
           <view class="dish-item-actions">
             <view class="dish-detail-btn" data-idx="{{index}}" bindtap="showDishDetail">详情</view>
-            <view class="dish-item-remove" data-idx="{{index}}" bindtap="removeDailyDish">✕</view>
+            <view class="dish-item-remove" data-id="{{item._id}}" bindtap="removeDailyDish">✕</view>
           </view>
         </view>
       </block>
@@ -146,9 +146,10 @@
   <dish-picker
     show="{{showPicker}}"
     title="{{dailySubTab === 'student' ? '添加学生菜品' : '添加老师菜品'}}"
-    excludeIds="{{pickerExcludeIds}}"
+    selectedDishes="{{pickerSelectedDishes}}"
     allDishes="{{filteredDishes}}"
     bind:add="onPickerAdd"
+    bind:remove="removeDailyDish"
     bind:close="onPickerClose"
   />
 

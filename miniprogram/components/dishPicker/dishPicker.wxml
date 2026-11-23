@@ -6,7 +6,7 @@
     <button class="picker-close" size="mini" catchtap="handleClose">完成</button>
   </view>
 
-  <view class="picker-search">
+  <view class="picker-search" hidden="{{reviewingSelected}}">
     <input
       id="dish-search-input"
       class="picker-search-input"
@@ -21,7 +21,24 @@
     />
   </view>
 
-  <scroll-view class="picker-list" scroll-y scroll-into-view="results-start-{{queryVersion}}">
+  <view class="selection-bar">
+    <text class="selection-count">已选 {{selectedDishes.length}} 道</text>
+    <text wx:if="{{!reviewingSelected}}" class="selection-preview">{{selectedPreview}}</text>
+    <button class="selection-toggle" size="mini" catchtap="toggleSelectionView"
+      disabled="{{!reviewingSelected && !selectedDishes.length}}">
+      {{reviewingSelected ? '继续选菜' : '查看全部'}}
+    </button>
+  </view>
+
+  <scroll-view wx:if="{{reviewingSelected}}" class="picker-list" scroll-y>
+    <view wx:if="{{!selectedDishes.length}}" class="picker-empty">暂无已选菜品</view>
+    <view wx:for="{{selectedDishes}}" wx:key="_id" class="selected-item">
+      <text class="picker-item-name">{{item.name}}</text>
+      <button class="selection-remove" size="mini" data-id="{{item._id}}" catchtap="handleRemove">移除</button>
+    </view>
+  </scroll-view>
+
+  <scroll-view hidden="{{reviewingSelected}}" class="picker-list" scroll-y scroll-into-view="results-start-{{queryVersion}}">
     <view id="results-start-{{queryVersion}}"></view>
     <view wx:if="{{dishes.length === 0}}" class="picker-empty">{{hasQuery ? '未找到匹配的菜品' : '暂无可添加的菜品'}}</view>
     <view
