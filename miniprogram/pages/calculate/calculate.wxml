@@ -1,4 +1,5 @@
 <!--pages/calculate/calculate.wxml-->
+<page-meta page-style="{{showPicker ? 'overflow: hidden;' : ''}}" />
 <view class="calculate-page">
   <!-- 页面加载中 -->
   <view wx:if="{{pageLoading}}" class="page-loading">
@@ -144,6 +145,7 @@
   <!-- 菜品选择器 -->
   <dish-picker
     show="{{showPicker}}"
+    title="{{dailySubTab === 'student' ? '添加学生菜品' : '添加老师菜品'}}"
     excludeIds="{{pickerExcludeIds}}"
     allDishes="{{filteredDishes}}"
     bind:add="onPickerAdd"

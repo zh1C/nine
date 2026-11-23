@@ -5,6 +5,10 @@ Component({
       type: Boolean,
       value: false,
     },
+    title: {
+      type: String,
+      value: "添加菜品",
+    },
     excludeIds: {
       type: Array,
       value: [],
@@ -18,67 +22,79 @@ Component({
   data: {
     dishes: [],
     keyword: "",
-    visible: false, // 控制动画显隐
+    hasQuery: false,
+    queryVersion: 0,
+    keyboardMaxHeight: null,
   },
 
   observers: {
     show(show) {
       if (show) {
-        this.setData({ visible: true, keyword: "" });
-        this.filterDishes();
-      } else {
-        // 延迟隐藏，等动画结束
-        setTimeout(() => {
-          this.setData({ visible: false });
-        }, 200);
+        this._fullHeight = wx.getWindowInfo().windowHeight;
+        this.setData({
+          keyword: "", hasQuery: false, queryVersion: 0, keyboardMaxHeight: null,
+          dishes: this.matchingDishes(""),
+        });
       }
     },
     "excludeIds, allDishes"() {
       // excludeIds 或 allDishes 变化时，仅重新过滤列表，保留当前搜索关键词
       if (this.properties.show) {
-        this.filterDishes();
+        this.setData({ dishes: this.matchingDishes(this.data.keyword) });
       }
     },
   },
 
   methods: {
+    onBackgroundTap(e) {
+      if (e.target.id !== "dish-search-input") wx.hideKeyboard();
+    },
+
+    measureBeforeTyping() {
+      // 再次点搜索框时，窗口可能已从上一次收键盘或分屏操作中恢复。
+      if (this.data.keyboardMaxHeight === null) this._fullHeight = wx.getWindowInfo().windowHeight;
+    },
+
     onInputSearch(e) {
-      this.setData({ keyword: e.detail.value });
-      this.filterDishes();
+      const keyword = e.detail.value;
+      if (keyword === this.data.keyword) return;
+      this.setData({
+        keyword,
+        hasQuery: !!keyword.trim(),
+        dishes: this.matchingDishes(keyword),
+        // 新关键词定位到列表顶部；连续添加时保留列表位置。
+        queryVersion: this.data.queryVersion + 1,
+      });
     },
 
-    handleSearch() {
-      this.filterDishes();
+    onKeyboardHeightChange(e) {
+      if (!this.properties.show) return;
+      const height = e.detail.height;
+      // 以打开前的可用高度计算上限；若系统已缩小视口，固定面板自然取两者中较小的高度。
+      this.setData({ keyboardMaxHeight: height > 0 ? Math.max(0, this._fullHeight - height) : null });
     },
 
-    filterDishes() {
-      const excludeIds = this.properties.excludeIds || [];
-      const allDishes = this.properties.allDishes || [];
-      const keyword = this.data.keyword.trim().toLowerCase();
-      let dishes = allDishes.filter((d) => excludeIds.indexOf(d._id) === -1);
-      if (keyword) {
-        dishes = dishes.filter((d) => d.name.toLowerCase().indexOf(keyword) > -1);
-      }
-      this.setData({ dishes });
+    matchingDishes(keyword) {
+      const { allDishes, excludeIds } = this.properties;
+      const query = keyword.trim().toLowerCase();
+      const excluded = new Set(excludeIds);
+      return allDishes.filter(d => !excluded.has(d._id) && d.name.toLowerCase().includes(query));
     },
 
     handleAdd(e) {
-      const idx = e.currentTarget.dataset.idx;
-      const dish = this.data.dishes[idx];
+      const id = e.currentTarget.dataset.id;
+      const dish = this.data.dishes.find(d => d._id === id);
       if (!dish) return;
       // 从当前列表中移除该菜品（即时反馈）
-      const dishes = this.data.dishes.filter((_, i) => i !== idx);
+      const dishes = this.data.dishes.filter(d => d._id !== id);
       this.setData({ dishes });
       // 触发 add 事件（放在 setData 之后，避免 observer 覆盖本地列表）
       this.triggerEvent("add", { dish });
     },
 
     handleClose() {
+      if (this.data.keyboardMaxHeight !== null) wx.hideKeyboard();
       this.triggerEvent("close");
-    },
-
-    preventBubble() {
-      // 阻止冒泡
     },
   },
 });

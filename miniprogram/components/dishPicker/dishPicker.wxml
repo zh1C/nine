@@ -1,45 +1,50 @@
 <!--components/dishPicker/dishPicker.wxml-->
-<view class="picker-mask {{show ? 'show' : ''}}" wx:if="{{visible}}" bindtap="handleClose">
-  <view class="picker-container {{show ? 'slide-up' : 'slide-down'}}" catchtap="preventBubble">
-    <view class="picker-header">
-      <text class="picker-title">添加菜品</text>
-      <text class="picker-close" bindtap="handleClose">✕</text>
-    </view>
-
-    <view class="picker-search">
-      <input
-        class="picker-search-input"
-        placeholder="🔍 搜索菜品名..."
-        value="{{keyword}}"
-        bindinput="onInputSearch"
-        bindconfirm="handleSearch"
-      />
-    </view>
-
-    <scroll-view class="picker-list" scroll-y>
-      <view wx:if="{{dishes.length === 0}}" class="picker-empty">暂无更多菜品</view>
-      <view
-        wx:for="{{dishes}}"
-        wx:key="_id"
-        class="picker-item"
-        data-idx="{{index}}"
-        bindtap="handleAdd"
-      >
-        <image
-          wx:if="{{item.imageFileID}}"
-          class="picker-item-image"
-          src="{{item.imageFileID}}"
-          mode="aspectFill"
-        />
-        <view wx:else class="picker-item-placeholder">🍽️</view>
-        <view class="picker-item-info">
-          <text class="picker-item-name">{{item.name}}</text>
-          <text class="picker-item-count">{{item.ingredients.length}}种配料</text>
-        </view>
-        <view class="picker-add-btn">
-          <text class="add-icon">+</text>
-        </view>
-      </view>
-    </scroll-view>
+<view wx:if="{{show}}" class="picker-container {{keyboardMaxHeight !== null ? 'keyboard-open' : ''}}" bindtap="onBackgroundTap"
+  style="{{keyboardMaxHeight === null ? '' : 'max-height:' + keyboardMaxHeight + 'px'}}">
+  <view class="picker-header">
+    <text class="picker-title">{{title}}</text>
+    <button class="picker-close" size="mini" catchtap="handleClose">完成</button>
   </view>
+
+  <view class="picker-search">
+    <input
+      id="dish-search-input"
+      class="picker-search-input"
+      placeholder="搜索菜品名"
+      value="{{keyword}}"
+      confirm-type="search"
+      adjust-position="{{false}}"
+      hold-keyboard="{{true}}"
+      bindtouchstart="measureBeforeTyping"
+      bindkeyboardheightchange="onKeyboardHeightChange"
+      bindinput="onInputSearch"
+    />
+  </view>
+
+  <scroll-view class="picker-list" scroll-y scroll-into-view="results-start-{{queryVersion}}">
+    <view id="results-start-{{queryVersion}}"></view>
+    <view wx:if="{{dishes.length === 0}}" class="picker-empty">{{hasQuery ? '未找到匹配的菜品' : '暂无可添加的菜品'}}</view>
+    <view
+      wx:for="{{dishes}}"
+      wx:key="_id"
+      class="picker-item"
+      data-id="{{item._id}}"
+      catchtap="handleAdd"
+    >
+      <image
+        wx:if="{{item.imageFileID}}"
+        class="picker-item-image"
+        src="{{item.imageFileID}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="picker-item-placeholder">🍽️</view>
+      <view class="picker-item-info">
+        <text class="picker-item-name">{{item.name}}</text>
+        <text class="picker-item-count">{{item.ingredients.length}}种配料</text>
+      </view>
+      <view class="picker-add-btn">
+        <text class="add-icon">+</text>
+      </view>
+    </view>
+  </scroll-view>
 </view>
