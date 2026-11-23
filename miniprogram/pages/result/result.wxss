@@ -434,51 +434,25 @@
   transform: scale(0.9);
 }
 
-/* 数值展示区域 */
-.adjust-garden-val-area {
+.editor-fields, .row-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6rpx;
-  min-width: 200rpx;
+  justify-content: space-between;
+  gap: 16rpx;
 }
-
-.adjust-garden-original {
-  font-size: 26rpx;
-  color: #999;
+.name-input, .amount-input, .unit-value {
+  padding: 12rpx 16rpx;
+  border-radius: 8rpx;
+  background: #f5f5f5;
+  font-size: 28rpx;
 }
-
-.adjust-garden-arrow {
-  font-size: 24rpx;
-  color: #ccc;
-}
-
-.adjust-garden-final {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.adjust-garden-final.val-up {
-  color: #4CAF50;
-}
-
-.adjust-garden-final.val-down {
-  color: #F44336;
-}
-
-.adjust-garden-delta {
-  font-size: 20rpx;
-  font-weight: bold;
-}
-
-.delta-up {
-  color: #4CAF50;
-}
-
-.delta-down {
-  color: #F44336;
-}
+.name-input { flex: 1; min-width: 0; }
+.amount-input { width: 130rpx; text-align: center; }
+.row-actions { padding: 0 8rpx 24rpx; font-size: 26rpx; color: #555; }
+.delete-row { color: #b42318; }
+.add-row { color: #287d36; }
+.base-amount { display: block; margin-bottom: 8rpx; color: #666; font-size: 24rpx; }
+.empty-day { text-align: center; padding: 24rpx; color: #666; font-size: 26rpx; }
 
 /* 底部操作按钮 */
 .adjust-modal-actions {

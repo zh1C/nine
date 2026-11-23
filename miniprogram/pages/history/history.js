@@ -121,6 +121,8 @@ Page({
         // 将记录数据存入全局，跳转到结果页展示
         app.globalData.calculateResult = {
           recordId,
+          schemaVersion: record.schemaVersion,
+          revision: record.revision || 0,
           tables: record.tables,
           summary: record.summary,
           gardens: record.gardens,

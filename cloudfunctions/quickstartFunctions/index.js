@@ -1,4 +1,5 @@
 const cloud = require("wx-server-sdk");
+const { recordFields } = require("./recordSnapshot");
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
@@ -786,7 +787,7 @@ const deleteGarden = async (event) => {
 // 保存计算记录
 const saveRecord = async (event) => {
   try {
-    const { selectedDates, tables, summary, gardens, username, adjustments } = event;
+    const { username } = event;
     if (!username) {
       return { success: false, errMsg: "用户名不能为空" };
     }
@@ -794,20 +795,14 @@ const saveRecord = async (event) => {
     const recordData = {
       _openid: wxContext.OPENID,
       username,
-      selectedDates: selectedDates || [],
-      tables: tables || [],
-      summary: summary || {},
-      gardens: gardens || [],
+      ...recordFields(event),
+      revision: 1,
       createTime: db.serverDate(),
     };
-    // 有调整记录时才存储 adjustments 字段
-    if (adjustments && Object.keys(adjustments).length > 0) {
-      recordData.adjustments = adjustments;
-    }
     const res = await db.collection("records").add({
       data: recordData,
     });
-    return { success: true, data: { _id: res._id } };
+    return { success: true, data: { _id: res._id, revision: 1 } };
   } catch (e) {
     return { success: false, errMsg: e.message || "保存记录失败" };
   }
@@ -816,7 +811,7 @@ const saveRecord = async (event) => {
 // 更新已有计算记录
 const updateRecord = async (event) => {
   try {
-    const { recordId, username, selectedDates, tables, summary, gardens, adjustments } = event;
+    const { recordId, username, schemaVersion, revision } = event;
     if (!recordId || !username) {
       return { success: false, errMsg: "参数不完整" };
     }
@@ -829,24 +824,30 @@ const updateRecord = async (event) => {
       return { success: false, errMsg: "无权修改此记录" };
     }
 
-    const updateData = {
-      selectedDates: selectedDates || [],
-      tables: tables || [],
-      summary: summary || {},
-      gardens: gardens || [],
-      updateTime: db.serverDate(),
-    };
-    // 有调整记录则更新，否则显式移除该字段
-    if (adjustments && Object.keys(adjustments).length > 0) {
-      updateData.adjustments = adjustments;
+    const condition = { _id: recordId, username };
+    if (schemaVersion === 2) {
+      if (!Number.isSafeInteger(revision) || revision < 0) {
+        return { success: false, errMsg: "缺少记录版本，请重新打开" };
+      }
+      // 首次升级的旧记录没有 revision。条件更新避免同时保存时恢复已删除的行。
+      condition.revision = revision === 0 ? _.exists(false) : revision;
     } else {
-      updateData.adjustments = _.remove();
+      if (record.data.schemaVersion === 2) {
+        return { success: false, errMsg: "请升级小程序后编辑这份清单" };
+      }
+      condition.schemaVersion = _.neq(2);
     }
 
-    await db.collection("records").doc(recordId).update({
-      data: updateData,
+    const result = await db.collection("records").where(condition).update({
+      data: {
+        ...recordFields(event, _.remove()),
+        revision: _.inc(1),
+        updateTime: db.serverDate(),
+      },
     });
-    return { success: true, data: { _id: recordId } };
+    if (!result.stats.updated) return { success: false, errMsg: "记录已变更，请重新打开后编辑" };
+    const savedRevision = schemaVersion === 2 ? revision + 1 : (record.data.revision || 0) + 1;
+    return { success: true, data: { _id: recordId, revision: savedRevision } };
   } catch (e) {
     return { success: false, errMsg: e.message || "更新记录失败" };
   }

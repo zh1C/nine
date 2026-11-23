@@ -3,7 +3,7 @@
   <!-- 全局操作提示（始终显示） -->
   <view class="page-tip-bar">
     <text class="page-tip-icon">💡</text>
-    <text class="page-tip-text">长按配料行可微调用量</text>
+    <text class="page-tip-text">长按配料行可改名、改量或删除</text>
   </view>
 
   <!-- 每天的配料表 -->
@@ -32,13 +32,11 @@
             wx:for="{{item.rows}}"
             wx:for-item="row"
             wx:for-index="rowIdx"
-            wx:key="name"
+            wx:key="rowId"
             class="table-data-row {{rowIdx % 2 === 0 ? 'even' : ''}}"
-            data-table-idx="{{tableIdx}}"
-            data-row-idx="{{rowIdx}}"
-            data-ing-name="{{row.name}}"
-            data-unit="{{row.unit}}"
-            bindlongpress="openAdjustPanel"
+            data-date="{{item.date}}"
+            data-row-id="{{row.rowId}}"
+            bindlongpress="openEditor"
           >
             <text class="td td-name">{{row.name}}</text>
             <!-- 各园区数值 -->
@@ -47,13 +45,12 @@
               wx:for-item="garden"
               wx:for-index="gardenIdx"
               wx:key="gardenId"
-              class="td td-amount {{(row.amounts[garden.gardenId] || 0) + (adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] || 0) > 0 ? 'has-value' : ''}} {{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] ? 'adjusted' : ''}}"
+              class="td td-amount {{row.amounts[garden.gardenId] > 0 ? 'has-value' : ''}} {{row.amounts[garden.gardenId] !== row.baseAmounts[garden.gardenId] ? 'adjusted' : ''}}"
             >
-              <text class="amount-val">{{(row.amounts[garden.gardenId] || 0) + (adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] || 0)}}</text>
-              <text
-                wx:if="{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId]}}"
-                class="adjust-badge {{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] > 0 ? 'badge-up' : 'badge-down'}}"
-              >{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId] > 0 ? '+' : ''}}{{adjustments[tableIdx + '_' + rowIdx + '_' + garden.gardenId]}}</text>
+              <text class="amount-val">{{row.amounts[garden.gardenId]}}</text>
+              <text wx:if="{{row.amounts[garden.gardenId] !== row.baseAmounts[garden.gardenId]}}"
+                class="adjust-badge {{row.amounts[garden.gardenId] > row.baseAmounts[garden.gardenId] ? 'badge-up' : 'badge-down'}}"
+              >{{amountFormat.delta(row.amounts[garden.gardenId], row.baseAmounts[garden.gardenId])}}</text>
             </view>
             <text class="td td-unit">{{row.unit}}</text>
           </view>
@@ -61,7 +58,8 @@
       </scroll-view>
     </view>
 
-    <!-- 保存按钮 -->
+    <view wx:if="{{!item.rows.length}}" class="empty-day">暂无配料</view>
+    <view class="table-save-btn add-row" data-date="{{item.date}}" bindtap="openEditor">＋ 补录配料</view>
     <view class="table-save-btn" data-idx="{{tableIdx}}" data-type="daily" bindtap="generateTableImage">
       <text>💾 保存此表为图片</text>
     </view>
@@ -110,52 +108,57 @@
 
   <!-- 底部操作按钮 -->
   <view class="bottom-actions">
-    <!-- 新建计算：保存为新记录 -->
-    <button wx:if="{{!fromHistory}}" class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved}}">
-      {{saved ? '☁️ 已保存到云端' : '📥 保存记录到云端'}}
-    </button>
-    <!-- 历史记录：更新原记录 -->
-    <button wx:else class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="updateRecord" loading="{{saving}}" disabled="{{saved}}">
-      {{saved ? '✅ 已更新' : '💾 更新此记录'}}
+    <button class="action-btn save-record-btn {{saved ? 'saved' : ''}}" bindtap="saveRecord" loading="{{saving}}" disabled="{{saved || saving}}">
+      {{saved ? '已保存到云端' : (recordId ? '更新此记录' : '保存记录到云端')}}
     </button>
   </view>
 </view>
 
-<!-- 配料调整弹窗（居中） -->
-<view class="adjust-modal-mask" wx:if="{{showAdjustPanel}}" bindtap="closeAdjustPanel">
+<view class="adjust-modal-mask" wx:if="{{editor}}" bindtap="closeEditor">
   <view class="adjust-modal" catchtap="preventBubble">
-    <!-- 标题 -->
     <view class="adjust-modal-header">
-      <text class="adjust-modal-title">{{adjustTarget.ingName}}</text>
-      <text class="adjust-modal-unit">({{adjustTarget.unit}})</text>
+      <text class="adjust-modal-title">{{editor.rowId ? '编辑配料' : '补录配料'}}</text>
+      <text class="adjust-modal-unit">{{editor.dateLabel}}</text>
     </view>
-
-    <!-- 园区列表 -->
     <scroll-view class="adjust-garden-scroll" scroll-y>
+      <view class="editor-fields">
+        <input class="name-input" placeholder="配料名称" value="{{editor.name}}" bindinput="changeName" />
+        <text wx:if="{{editor.rowId}}" class="unit-value">{{editor.unit}}</text>
+        <picker wx:else mode="selector" range="{{unitOptions}}" value="{{editor.unitIdx}}" bindchange="changeUnit">
+          <view class="unit-value">单位：{{editor.unit}} ▾</view>
+        </picker>
+      </view>
       <view wx:for="{{gardens}}" wx:key="gardenId" class="adjust-garden-row">
-        <text class="adjust-garden-name">{{item.name}}</text>
+        <text class="adjust-garden-name">{{item.name}} · {{editor.rowId ? '最终用量' : '追加用量'}}（{{editor.unit}}）</text>
+        <text wx:if="{{editor.rowId}}" class="base-amount">生成用量 {{editor.baseAmounts[item.gardenId]}} {{editor.unit}}</text>
         <view class="adjust-garden-controls">
           <view class="adj-btn minus" data-garden-id="{{item.gardenId}}" data-delta="-5" bindtap="quickAdjustRow">-5</view>
           <view class="adj-btn minus" data-garden-id="{{item.gardenId}}" data-delta="-1" bindtap="quickAdjustRow">-1</view>
-          <view class="adjust-garden-val-area">
-            <text class="adjust-garden-original">{{adjustRowOriginals[item.gardenId]}}</text>
-            <text class="adjust-garden-arrow">→</text>
-            <text class="adjust-garden-final {{adjustRowDeltas[item.gardenId] > 0 ? 'val-up' : adjustRowDeltas[item.gardenId] < 0 ? 'val-down' : ''}}">{{adjustRowOriginals[item.gardenId] + (adjustRowDeltas[item.gardenId] || 0)}}</text>
-            <text wx:if="{{adjustRowDeltas[item.gardenId]}}" class="adjust-garden-delta {{adjustRowDeltas[item.gardenId] > 0 ? 'delta-up' : 'delta-down'}}">{{adjustRowDeltas[item.gardenId] > 0 ? '+' : ''}}{{adjustRowDeltas[item.gardenId]}}</text>
-          </view>
+          <input class="amount-input" type="digit" placeholder="0" data-garden-id="{{item.gardenId}}"
+            value="{{editor.amounts[item.gardenId]}}" bindinput="changeAmount" />
           <view class="adj-btn plus" data-garden-id="{{item.gardenId}}" data-delta="1" bindtap="quickAdjustRow">+1</view>
           <view class="adj-btn plus" data-garden-id="{{item.gardenId}}" data-delta="5" bindtap="quickAdjustRow">+5</view>
         </view>
       </view>
     </scroll-view>
-
-    <!-- 底部按钮 -->
+    <view wx:if="{{editor.rowId}}" class="row-actions">
+      <view bindtap="resetAmounts">还原用量</view>
+      <view class="delete-row" bindtap="deleteRow">删除此行</view>
+    </view>
     <view class="adjust-modal-actions">
-      <view class="adjust-act-btn act-reset" bindtap="resetAdjust">还原全部</view>
-      <view class="adjust-act-btn act-confirm" bindtap="confirmAdjust">确定</view>
+      <view class="adjust-act-btn act-reset" bindtap="closeEditor">取消</view>
+      <view class="adjust-act-btn act-confirm" bindtap="confirmEditor">确定</view>
     </view>
   </view>
 </view>
+
+<wxs module="amountFormat">
+  function delta(current, base) {
+    var value = (Math.round(current * 1000) - Math.round(base * 1000)) / 1000;
+    return (value > 0 ? "+" : "") + value;
+  }
+  module.exports.delta = delta;
+</wxs>
 
 <!-- Canvas 用于生成图片 (新版 Canvas 2D) -->
 <canvas
@@ -166,5 +169,5 @@
 <!-- 旧版Canvas降级 -->
 <canvas
   canvas-id="resultCanvasLegacy"
-  style="position:fixed;left:-9999px;top:-9999px;width:800px;height:1200px;"
+  style="position:fixed;left:-9999px;top:-9999px;width:{{legacyWidth}}px;height:{{legacyHeight}}px;"
 />

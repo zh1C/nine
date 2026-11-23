@@ -1,4 +1,6 @@
 // pages/calculate/calculate.js
+const { createRow, sortRows } = require("../../utils/ingredientTable");
+
 Page({
   data: {
     // 日历相关
@@ -482,10 +484,7 @@ Page({
       return;
     }
 
-    // 类型排序权重
-    const typeOrder = { "肉类": 1, "蔬菜": 2 };
-
-    // 初始化结果结构: { date: { gardenId: { 'ingName_unit': amount } } }
+    // 按送货日期、园区、配料名称和单位归集
     const resultMap = {};
     selectedDates.forEach((date) => {
       resultMap[date] = {};
@@ -511,7 +510,8 @@ Page({
             if (ratio === 0 || isNaN(ratio)) continue;
 
             const amount = 1 * ratio; // 默认菜品量=1
-            const key = `${ing.name}_${ing.unit}`;
+            const name = ing.name.trim();
+            const key = JSON.stringify([name, ing.unit]);
 
             // 提前送货逻辑
             let targetDate = date;
@@ -528,7 +528,7 @@ Page({
 
             if (!resultMap[targetDate][garden.gardenId][key]) {
               resultMap[targetDate][garden.gardenId][key] = {
-                name: ing.name,
+                name,
                 unit: ing.unit,
                 type: ing.type || "蔬菜",
                 reuse: ing.reuse || false,
@@ -570,20 +570,7 @@ Page({
           amounts[g.gardenId] = Math.round(val * 1000) / 1000;
         });
 
-        rows.push({
-          name: sample.name,
-          unit: sample.unit,
-          type: sample.type,
-          amounts,
-        });
-      });
-
-      // 按类型排序，同类型按名称排序
-      rows.sort((a, b) => {
-        const orderA = typeOrder[a.type] || 7;
-        const orderB = typeOrder[b.type] || 7;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
+        rows.push(createRow(sample.name, sample.unit, sample.type, amounts));
       });
 
       const d = new Date(date);
@@ -591,7 +578,7 @@ Page({
       return {
         date,
         dateLabel: `${d.getMonth() + 1}月${d.getDate()}日（周${weekDay}）`,
-        rows,
+        rows: sortRows(rows),
       };
     });
 
@@ -633,6 +620,7 @@ Page({
     // 存入全局，跳转结果页
     const app = getApp();
     app.globalData.calculateResult = {
+      schemaVersion: 2,
       tables,
       summary,
       gardens: gardens.map((g) => ({ gardenId: g.gardenId, name: g.name })),

@@ -1,185 +1,180 @@
 // pages/result/result.js
+const { unitOptions, createRow, sortRows, appendOrMerge, readTables } = require("../../utils/ingredientTable");
+
+function parseAmount(value) {
+  const text = String(value).trim();
+  if (!/^(?:\d+(?:\.\d{0,3})?|\.\d{1,3})$/.test(text)) return NaN;
+  const amount = Number(text);
+  return Number.isSafeInteger(Math.round(amount * 1000)) ? amount : NaN;
+}
+
+function listAmounts(gardens, row) {
+  return gardens.map(g => `${g.name}：${row.amounts[g.gardenId]} ${row.unit}`).join("\n");
+}
+
 Page({
   data: {
-    tables: [], // 每天一个配料表
-    summary: {}, // 菜品下单汇总
-    gardens: [], // 园区列表
+    tables: [],
+    summary: {},
+    gardens: [],
     selectedDates: [],
     saving: false,
-    saved: false, // 是否已保存到云端
-    fromHistory: false, // 是否从历史记录查看
-    generatingIdx: -1, // 当前正在生成图片的表格索引, -1=无
-
-    // ====== 配料微调（整行模式） ======
-    adjustments: {}, // 调整记录: { "tableIdx_rowIdx_gardenId": deltaValue }
-    showAdjustPanel: false,
-    adjustTarget: null, // { tableIdx, rowIdx, ingName, unit }
-    adjustRowDeltas: {}, // 面板内临时状态: { gardenId: delta }
-    adjustRowOriginals: {}, // 面板内原始值: { gardenId: originalVal }
+    saved: false,
+    recordId: "",
+    generatingIdx: -1,
+    legacyWidth: 800,
+    legacyHeight: 1200,
+    editor: null,
+    unitOptions,
   },
 
   onLoad(options) {
-    const app = getApp();
-    const data = app.globalData.calculateResult;
-    if (!data) {
-      wx.showToast({ title: "数据异常", icon: "none" });
+    const record = getApp().globalData.calculateResult;
+    if (!record || (options.from === "history" && !record.recordId)) {
+      wx.showToast({ title: "清单数据缺失", icon: "none" });
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
-
+    this._revision = record.revision || 0;
     this.setData({
-      tables: data.tables,
-      summary: data.summary,
-      gardens: data.gardens,
-      selectedDates: data.selectedDates,
-      fromHistory: options.from === "history",
-      adjustments: data.adjustments || {},
+      tables: readTables(record),
+      summary: record.summary,
+      gardens: record.gardens,
+      selectedDates: record.selectedDates,
+      recordId: record.recordId || "",
+      saved: !!record.recordId,
     });
-
-    // 保存原始数据用于存云数据库
-    this._rawData = data;
-    // 历史记录对应的云端记录 id（仅历史模式存在）
-    this._recordId = data.recordId || "";
   },
 
-  // ========== 配料微调（整行模式） ==========
-
-  // 长按配料行，打开调整面板
-  openAdjustPanel(e) {
-    const { tableIdx, rowIdx, ingName, unit } = e.currentTarget.dataset;
-    const { tables, gardens, adjustments } = this.data;
-    const row = tables[tableIdx].rows[rowIdx];
-
-    // 初始化每个园区的原始值和已有调整量
-    const adjustRowOriginals = {};
-    const adjustRowDeltas = {};
-    gardens.forEach((g) => {
-      const gardenId = String(g.gardenId);
-      adjustRowOriginals[gardenId] = row.amounts[gardenId] || 0;
-      const key = `${tableIdx}_${rowIdx}_${gardenId}`;
-      adjustRowDeltas[gardenId] = adjustments[key] || 0;
-    });
-
+  openEditor(e) {
+    if (this.data.saving) return;
+    const { date, rowId } = e.currentTarget.dataset;
+    const table = this.data.tables.find(t => t.date === date);
+    if (!table) return;
+    const row = table.rows.find(r => r.rowId === rowId);
+    if (rowId && !row) return;
+    const amounts = {};
+    for (const { gardenId } of this.data.gardens) {
+      amounts[gardenId] = row ? String(row.amounts[gardenId]) : "";
+    }
     this.setData({
-      showAdjustPanel: true,
-      adjustTarget: { tableIdx, rowIdx, ingName, unit },
-      adjustRowDeltas,
-      adjustRowOriginals,
+      editor: {
+        date,
+        dateLabel: table.dateLabel,
+        rowId: rowId || "",
+        name: row ? row.name : "",
+        unit: row ? row.unit : unitOptions[0],
+        unitIdx: 0,
+        baseAmounts: row ? row.baseAmounts : {},
+        amounts,
+      },
     });
   },
 
-  closeAdjustPanel() {
-    this.setData({ showAdjustPanel: false, adjustTarget: null, adjustRowDeltas: {}, adjustRowOriginals: {} });
+  closeEditor() {
+    this.setData({ editor: null });
   },
 
-  // 快捷加减某个园区
+  changeName(e) {
+    this.setData({ "editor.name": e.detail.value });
+  },
+
+  changeUnit(e) {
+    const idx = Number(e.detail.value);
+    this.setData({ "editor.unit": unitOptions[idx], "editor.unitIdx": idx });
+  },
+
+  setEditorAmount(id, value) {
+    this.setData({ "editor.amounts": { ...this.data.editor.amounts, [id]: value } });
+  },
+
+  changeAmount(e) {
+    this.setEditorAmount(e.currentTarget.dataset.gardenId, e.detail.value);
+  },
+
   quickAdjustRow(e) {
     const { gardenId, delta } = e.currentTarget.dataset;
-    const { adjustRowDeltas, adjustRowOriginals } = this.data;
-    const gId = String(gardenId);
-    const newDelta = (adjustRowDeltas[gId] || 0) + Number(delta);
-    const finalVal = (adjustRowOriginals[gId] || 0) + newDelta;
-
-    if (finalVal < 0) {
-      wx.showToast({ title: "不能为负数", icon: "none" });
+    const current = parseAmount(this.data.editor.amounts[gardenId] || "0");
+    const value = (Math.round(current * 1000) + Number(delta) * 1000) / 1000;
+    if (!Number.isFinite(value) || value < 0) {
+      wx.showToast({ title: "请输入有效的非负用量", icon: "none" });
       return;
     }
-
-    this.setData({ [`adjustRowDeltas.${gId}`]: newDelta });
+    this.setEditorAmount(gardenId, String(value));
   },
 
-  // 手动输入某个园区的调整量
-  onAdjustRowInput(e) {
-    const gardenId = String(e.currentTarget.dataset.gardenId);
-    const val = e.detail.value;
-    const delta = parseFloat(val) || 0;
-    const { adjustRowOriginals } = this.data;
-    const finalVal = (adjustRowOriginals[gardenId] || 0) + delta;
+  resetAmounts() {
+    this.setData({ "editor.amounts": { ...this.data.editor.baseAmounts } });
+  },
 
-    if (finalVal < 0) {
-      wx.showToast({ title: "不能为负数", icon: "none" });
+  commitRows(date, rows) {
+    const tables = this.data.tables.map(table => table.date === date ? { ...table, rows } : table);
+    this.setData({ tables, editor: null, saved: false });
+  },
+
+  confirmEditor() {
+    const { editor, tables, gardens } = this.data;
+    if (!editor) return;
+    const name = editor.name.trim();
+    if (!name) {
+      wx.showToast({ title: "请输入配料名称", icon: "none" });
       return;
     }
-
-    this.setData({ [`adjustRowDeltas.${gardenId}`]: delta });
-  },
-
-  // 确认整行调整
-  confirmAdjust() {
-    const { adjustTarget, adjustRowDeltas, adjustments } = this.data;
-    if (!adjustTarget) return;
-
-    const { tableIdx, rowIdx } = adjustTarget;
-    const newAdjustments = { ...adjustments };
-
-    // 将每个园区的调整量写入 adjustments
-    Object.keys(adjustRowDeltas).forEach((gardenId) => {
-      const key = `${tableIdx}_${rowIdx}_${gardenId}`;
-      const delta = adjustRowDeltas[gardenId];
-      if (delta === 0) {
-        delete newAdjustments[key];
-      } else {
-        newAdjustments[key] = delta;
+    const amounts = {};
+    const zeros = {};
+    for (const { gardenId, name: gardenName } of gardens) {
+      const value = editor.amounts[gardenId];
+      const amount = value === "" && !editor.rowId ? 0 : parseAmount(value);
+      if (!Number.isFinite(amount)) {
+        wx.showToast({ title: gardenName + "用量须为非负数，最多三位小数", icon: "none" });
+        return;
       }
-    });
+      amounts[gardenId] = amount;
+      zeros[gardenId] = 0;
+    }
+    if (!editor.rowId && !Object.values(amounts).some(n => n > 0)) {
+      wx.showToast({ title: "至少填写一个园区的追加量", icon: "none" });
+      return;
+    }
 
-    this.setData({
-      adjustments: newAdjustments,
-      showAdjustPanel: false,
-      adjustTarget: null,
-      adjustRowDeltas: {},
-      adjustRowOriginals: {},
-    });
+    const table = tables.find(t => t.date === editor.date);
+    const original = table.rows.find(r => r.rowId === editor.rowId);
+    const row = original ? { ...original, name, amounts } : createRow(name, editor.unit, "其他", amounts, zeros);
+    const rows = table.rows.filter(r => r.rowId !== editor.rowId);
+    const merged = appendOrMerge(rows, row);
+    if (merged !== row) {
+      wx.showModal({
+        title: "合并同名配料",
+        content: `${table.dateLabel} · ${name} 合并后的用量\n${listAmounts(gardens, merged)}`,
+        confirmText: "确认合并",
+        success: res => { if (res.confirm) this.commitRows(table.date, sortRows(rows)); },
+      });
+    } else {
+      this.commitRows(table.date, sortRows(rows));
+    }
   },
 
-  // 还原整行所有调整
-  resetAdjust() {
-    const { adjustTarget, adjustments, gardens } = this.data;
-    if (!adjustTarget) return;
-
-    const { tableIdx, rowIdx } = adjustTarget;
-    const newAdjustments = { ...adjustments };
-
-    // 删除该行所有园区的调整
-    gardens.forEach((g) => {
-      const key = `${tableIdx}_${rowIdx}_${g.gardenId}`;
-      delete newAdjustments[key];
-    });
-
-    this.setData({
-      adjustments: newAdjustments,
-      showAdjustPanel: false,
-      adjustTarget: null,
-      adjustRowDeltas: {},
-      adjustRowOriginals: {},
+  deleteRow() {
+    const { editor, tables, gardens } = this.data;
+    if (!editor || !editor.rowId) return;
+    const table = tables.find(t => t.date === editor.date);
+    const row = table.rows.find(r => r.rowId === editor.rowId);
+    wx.showModal({
+      title: "删除当天这一行？",
+      content: `${table.dateLabel} · ${row.name}（${row.unit}）\n${listAmounts(gardens, row)}`,
+      confirmText: "删除此行",
+      confirmColor: "#c0392b",
+      success: res => {
+        if (res.confirm) this.commitRows(table.date, table.rows.filter(r => r.rowId !== row.rowId));
+      },
     });
   },
 
   preventBubble() {},
 
-  // ========== 构建调整后的 tables（用于保存和导出） ==========
-  buildFinalTables() {
-    const { tables, adjustments } = this.data;
-    if (!adjustments || Object.keys(adjustments).length === 0) {
-      return tables;
-    }
-    return tables.map((table, tIdx) => ({
-      ...table,
-      rows: table.rows.map((row, rIdx) => {
-        const newAmounts = { ...row.amounts };
-        Object.keys(newAmounts).forEach((gardenId) => {
-          const key = `${tIdx}_${rIdx}_${gardenId}`;
-          if (adjustments[key]) {
-            newAmounts[gardenId] = Math.round(((newAmounts[gardenId] || 0) + adjustments[key]) * 1000) / 1000;
-          }
-        });
-        return { ...row, amounts: newAmounts };
-      }),
-    }));
-  },
-
   // ========== 生成单个表格图片 ==========
   generateTableImage(e) {
+    if (this.data.generatingIdx !== -1) return;
     const idx = e.currentTarget.dataset.idx;
     const type = e.currentTarget.dataset.type; // 'daily' 或 'summary'
 
@@ -191,8 +186,7 @@ Page({
   },
 
   generateDailyTableImage(tableIdx) {
-    const finalTables = this.buildFinalTables();
-    const table = finalTables[tableIdx];
+    const table = this.data.tables[tableIdx];
     const gardens = this.data.gardens;
     if (!table) return;
 
@@ -211,8 +205,10 @@ Page({
 
     const query = this.createSelectorQuery();
     query.select("#resultCanvas").fields({ node: true, size: true }).exec((res) => {
-      if (!res[0]) {
-        this.generateDailyImageLegacy(tableIdx, canvasWidth, canvasHeight);
+      if (!res[0] || !res[0].node) {
+        this.setData({ legacyWidth: canvasWidth, legacyHeight: canvasHeight }, () => {
+          this.generateDailyImageLegacy(table, canvasWidth, canvasHeight);
+        });
         return;
       }
 
@@ -473,9 +469,7 @@ Page({
   },
 
   // 降级方案（旧版Canvas）
-  generateDailyImageLegacy(tableIdx, canvasWidth, canvasHeight) {
-    const finalTables = this.buildFinalTables();
-    const table = finalTables[tableIdx];
+  generateDailyImageLegacy(table, canvasWidth, canvasHeight) {
     const gardens = this.data.gardens;
     const ctx = wx.createCanvasContext("resultCanvasLegacy", this);
 
@@ -582,95 +576,35 @@ Page({
     }
   },
 
-  // ========== 保存记录到云数据库（新建） ==========
   async saveRecord() {
+    const { saving, saved, recordId, selectedDates, tables, summary, gardens } = this.data;
+    if (saving || saved) return;
     this.setData({ saving: true });
-    wx.showLoading({ title: "保存中..." });
-
+    wx.showLoading({ title: "保存中...", mask: true });
     try {
-      // 口径A：tables 存“原始值”，adjustments 单独存增量（展示/导出时再叠加）
-      const { tables, summary, gardens, selectedDates, adjustments } = this.data;
-
-      const app = getApp();
-      const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
-
+      const user = getApp().globalData.userInfo;
       const res = await wx.cloud.callFunction({
         name: "quickstartFunctions",
         data: {
-          type: "saveRecord",
-          username,
-          selectedDates,
-          tables,
-          summary,
-          gardens,
-          adjustments: Object.keys(adjustments).length > 0 ? adjustments : undefined,
+          type: recordId ? "updateRecord" : "saveRecord",
+          username: user ? user.username : "",
+          recordId, revision: this._revision, schemaVersion: 2,
+          selectedDates, tables, summary, gardens,
         },
       });
-
-      if (res.result.success) {
-        this.setData({ saved: true });
-        wx.showToast({ title: "保存成功", icon: "success" });
-      } else {
+      if (!res.result.success) {
         wx.showToast({ title: res.result.errMsg || "保存失败", icon: "none" });
+        return;
       }
+      this._revision = res.result.data.revision;
+      this.setData({ recordId: res.result.data._id, saved: true });
+      const pages = getCurrentPages();
+      const previous = pages[pages.length - 2];
+      if (previous && previous.route === "pages/history/history") previous._needRefresh = true;
+      wx.showToast({ title: recordId ? "已更新" : "保存成功", icon: "success" });
     } catch (e) {
       console.error(e);
-      wx.showToast({ title: "保存失败", icon: "none" });
-    } finally {
-      this.setData({ saving: false });
-      wx.hideLoading();
-    }
-  },
-
-  // ========== 更新已有记录（历史模式） ==========
-  async updateRecord() {
-    if (!this._recordId) {
-      wx.showToast({ title: "记录ID缺失", icon: "none" });
-      return;
-    }
-
-    this.setData({ saving: true });
-    wx.showLoading({ title: "更新中..." });
-
-    try {
-      // 口径A：tables 存“原始值”，adjustments 单独存增量
-      const { tables, summary, gardens, selectedDates, adjustments } = this.data;
-
-      const app = getApp();
-      const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
-
-      const res = await wx.cloud.callFunction({
-        name: "quickstartFunctions",
-        data: {
-          type: "updateRecord",
-          recordId: this._recordId,
-          username,
-          selectedDates,
-          tables,
-          summary,
-          gardens,
-          adjustments: Object.keys(adjustments).length > 0 ? adjustments : undefined,
-        },
-      });
-
-      if (res.result.success) {
-        this.setData({ saved: true });
-        wx.showToast({ title: "已更新", icon: "success" });
-
-        // 通知历史页刷新
-        const pages = getCurrentPages();
-        const prevPage = pages[pages.length - 2];
-        if (prevPage && prevPage.route && prevPage.route.indexOf("pages/history/history") > -1) {
-          prevPage._needRefresh = true;
-        }
-
-        setTimeout(() => wx.navigateBack(), 800);
-      } else {
-        wx.showToast({ title: res.result.errMsg || "更新失败", icon: "none" });
-      }
-    } catch (e) {
-      console.error(e);
-      wx.showToast({ title: "更新失败", icon: "none" });
+      wx.showToast({ title: "保存失败，请重试", icon: "none" });
     } finally {
       this.setData({ saving: false });
       wx.hideLoading();

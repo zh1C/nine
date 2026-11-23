@@ -35,13 +35,13 @@
       </view>
       <view class="record-card-actions">
         <view class="record-action-btn view-btn" bindtap="viewRecord" data-id="{{item._id}}">
-          <text>查看</text>
+          <text>编辑清单</text>
         </view>
         <view class="record-action-btn edit-btn" bindtap="editRecord" data-id="{{item._id}}">
-          <text>修改</text>
+          <text>按菜单重新计算</text>
         </view>
         <view class="record-action-btn delete-btn" bindtap="deleteRecord" data-id="{{item._id}}">
-          <text>删除</text>
+          <text>删除记录</text>
         </view>
       </view>
     </view>

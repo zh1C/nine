@@ -1,4 +1,6 @@
 // pages/dishEdit/dishEdit.js
+const { unitOptions } = require("../../utils/ingredientTable");
+
 Page({
   data: {
     dishId: "",
@@ -8,7 +10,7 @@ Page({
     imageTempPath: "",
     ingredients: [],
     gardens: [],
-    unitOptions: ["kg", "g", "个", "ml", "L", "根", "片", "块", "勺"],
+    unitOptions,
     typeOptions: ["肉类", "蔬菜"],
     category: "student", // "student" | "teacher"
     loading: false,
