@@ -51,7 +51,7 @@
   <view class="empty-state" wx:if="{{!loading && records.length === 0 && loaded}}">
     <text class="empty-icon">📭</text>
     <text class="empty-text">暂无历史记录</text>
-    <text class="empty-hint">在结果页点击"保存记录到云端"即可保存</text>
+    <text class="empty-hint">在结果页顶部点击「保存清单」即可保存</text>
   </view>
 
   <!-- 加载状态 -->
