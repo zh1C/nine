@@ -19,7 +19,10 @@ const DEFAULT_MODEL = "FunAudioLLM/SenseVoiceSmall";
 const TRANSCRIPTION_HOST = "api.siliconflow.cn";
 const TRANSCRIPTION_PATH = "/v1/audio/transcriptions";
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024; // 4MB 安全上限
-const REQUEST_TIMEOUT_MS = 15000;
+const CONNECT_TIMEOUT_MS = 4500;  // DNS + TCP + TLS 握手最大等待 4.5s，快速熔断死节点
+const RESPONSE_TIMEOUT_MS = 12000; // 握手完成后等待识别结果最大 12s（兼容晚高峰推理排队）
+const TOTAL_BUDGET_MS = 22000;    // 整体请求预算 22s，匹配云函数 25s 超时并预留 3s 安全返回窗口
+const MAX_RETRIES = 2;            // 最多自动重试 2 次（共最多 3 次尝试）
 
 const MIME_BY_FORMAT = {
   mp3: "audio/mpeg",
@@ -142,28 +145,77 @@ function buildTextSegments(rawText, knownDishNames = []) {
   }));
 }
 
-function postMultipartTranscription({ apiKey, audioBuffer, format = "mp3", model = DEFAULT_MODEL }) {
+function sleep(ms) {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    if (t && typeof t.unref === "function") t.unref();
+  });
+}
+
+function createHttpError(message, { statusCode = 0, retryable = false } = {}) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  err.retryable = retryable;
+  return err;
+}
+
+function buildMultipartPayload({ audioBuffer, format = "mp3", model = DEFAULT_MODEL }) {
+  const ext = String(format || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
+  const contentType = MIME_BY_FORMAT[ext] || "audio/mpeg";
+  const boundary = "----NineVoiceBoundary" + Date.now().toString(16) + Math.random().toString(16).slice(2, 10);
+
+  const modelPart = Buffer.from(
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="model"\r\n\r\n` +
+    `${model}\r\n`,
+    "utf8"
+  );
+
+  const fileHeader = Buffer.from(
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="speech.${ext}"\r\n` +
+    `Content-Type: ${contentType}\r\n\r\n`,
+    "utf8"
+  );
+
+  const closingPart = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
+  const body = Buffer.concat([modelPart, fileHeader, audioBuffer, closingPart]);
+  return { boundary, body };
+}
+
+function postMultipartOnce({ apiKey, boundary, body, remainingBudgetMs }) {
   return new Promise((resolve, reject) => {
-    const ext = String(format || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
-    const contentType = MIME_BY_FORMAT[ext] || "audio/mpeg";
-    const boundary = "----NineVoiceBoundary" + Date.now().toString(16) + Math.random().toString(16).slice(2, 10);
+    const reqStartTs = Date.now();
+    let settled = false;
+    let connectTimer = null;
+    let responseTimer = null;
 
-    const modelPart = Buffer.from(
-      `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="model"\r\n\r\n` +
-      `${model}\r\n`,
-      "utf8"
-    );
+    const clearTimers = () => {
+      if (connectTimer) {
+        clearTimeout(connectTimer);
+        connectTimer = null;
+      }
+      if (responseTimer) {
+        clearTimeout(responseTimer);
+        responseTimer = null;
+      }
+    };
 
-    const fileHeader = Buffer.from(
-      `--${boundary}\r\n` +
-      `Content-Disposition: form-data; name="file"; filename="speech.${ext}"\r\n` +
-      `Content-Type: ${contentType}\r\n\r\n`,
-      "utf8"
-    );
+    const finishResolve = (val) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      resolve(val);
+    };
 
-    const closingPart = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
-    const body = Buffer.concat([modelPart, fileHeader, audioBuffer, closingPart]);
+    const finishReject = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      reject(err);
+    };
+
+    const connectBudget = Math.min(CONNECT_TIMEOUT_MS, Math.max(1500, remainingBudgetMs));
 
     const req = https.request(
       {
@@ -171,15 +223,23 @@ function postMultipartTranscription({ apiKey, audioBuffer, format = "mp3", model
         port: 443,
         path: TRANSCRIPTION_PATH,
         method: "POST",
+        family: 4,    // 强制走 IPv4，规避云函数双栈 DNS 命中 IPv6 路由黑洞
+        agent: false, // 每次独立建连，避免容器冻结/解冻复用残留半开连接
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": `multipart/form-data; boundary=${boundary}`,
           "Content-Length": body.length,
+          Connection: "close",
         },
       },
       (res) => {
         const chunks = [];
         res.on("data", (chunk) => chunks.push(chunk));
+        res.on("error", (streamErr) => {
+          finishReject(
+            createHttpError(`读取语音识别响应失败: ${streamErr.message}`, { retryable: true })
+          );
+        });
         res.on("end", () => {
           const responseText = Buffer.concat(chunks).toString("utf8");
           let parsed = null;
@@ -190,7 +250,7 @@ function postMultipartTranscription({ apiKey, audioBuffer, format = "mp3", model
           }
 
           if (res.statusCode >= 200 && res.statusCode < 300 && parsed && typeof parsed.text === "string") {
-            resolve(parsed.text);
+            finishResolve(parsed.text);
             return;
           }
 
@@ -198,22 +258,94 @@ function postMultipartTranscription({ apiKey, audioBuffer, format = "mp3", model
             (parsed && (parsed.message || (parsed.error && parsed.error.message))) ||
             responseText.slice(0, 200) ||
             `HTTP ${res.statusCode}`;
-          reject(new Error(`语音识别服务异常(${res.statusCode}): ${detail}`));
+          // 429 限流与 5xx 服务端抖动可重试；400/401/403 等客户端错误不重试
+          const retryable = res.statusCode === 408 || res.statusCode === 429 || res.statusCode >= 500;
+          finishReject(
+            createHttpError(`语音识别服务异常(${res.statusCode}): ${detail}`, {
+              statusCode: res.statusCode,
+              retryable,
+            })
+          );
         });
       }
     );
 
-    req.on("error", (err) => {
-      reject(new Error(`请求语音识别服务失败: ${err.message}`));
+    const startResponsePhaseTimer = () => {
+      if (connectTimer) {
+        clearTimeout(connectTimer);
+        connectTimer = null;
+      }
+      const leftAfterConnect = remainingBudgetMs - (Date.now() - reqStartTs);
+      const respBudget = Math.min(RESPONSE_TIMEOUT_MS, Math.max(1500, leftAfterConnect));
+      responseTimer = setTimeout(() => {
+        req.destroy(
+          createHttpError("语音识别服务响应超时，请稍后重试", { retryable: true })
+        );
+      }, respBudget);
+      if (responseTimer && typeof responseTimer.unref === "function") responseTimer.unref();
+    };
+
+    // 阶段 1：DNS + TCP + TLS 握手限时保护（3.5s 未完成握手立即切断重连）
+    connectTimer = setTimeout(() => {
+      req.destroy(
+        createHttpError("连接语音识别服务握手超时", { retryable: true })
+      );
+    }, connectBudget);
+    if (connectTimer && typeof connectTimer.unref === "function") connectTimer.unref();
+
+    req.on("socket", (socket) => {
+      if (socket.secureConnecting === false && !socket.connecting) {
+        startResponsePhaseTimer();
+      } else {
+        socket.once("secureConnect", startResponsePhaseTimer);
+      }
     });
 
-    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-      req.destroy(new Error("语音识别请求超时，请稍后重试"));
+    req.on("error", (err) => {
+      const isRetryable = err.retryable !== undefined ? err.retryable : true;
+      const prefix = err.message && err.message.startsWith("语音识别") ? err.message : `请求语音识别服务失败: ${err.message}`;
+      finishReject(createHttpError(prefix, { statusCode: err.statusCode || 0, retryable: isRetryable }));
     });
 
     req.write(body);
     req.end();
   });
+}
+
+async function postMultipartTranscription({ apiKey, audioBuffer, format = "mp3", model = DEFAULT_MODEL }) {
+  const { boundary, body } = buildMultipartPayload({ audioBuffer, format, model });
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
+    const remaining = deadline - Date.now();
+    if (attempt > 1 && remaining < 2200) {
+      break;
+    }
+
+    const attemptStart = Date.now();
+    try {
+      return await postMultipartOnce({
+        apiKey,
+        boundary,
+        body,
+        remainingBudgetMs: Math.max(2000, remaining),
+      });
+    } catch (err) {
+      lastError = err;
+      const elapsed = Date.now() - attemptStart;
+      const canRetry = err.retryable && attempt <= MAX_RETRIES && deadline - Date.now() >= 2500;
+      console.warn(
+        `[speechService] 第 ${attempt} 次识别请求失败 (${elapsed}ms, retry=${canRetry}): ${err.message}`
+      );
+      if (!canRetry) {
+        throw err;
+      }
+      await sleep(200 * attempt);
+    }
+  }
+
+  throw lastError || new Error("语音识别请求超时，请稍后重试");
 }
 
 async function transcribeAudio({ audioBase64, format = "mp3", knownDishNames = [] }) {
