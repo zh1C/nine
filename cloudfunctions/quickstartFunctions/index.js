@@ -1,5 +1,6 @@
 const cloud = require("wx-server-sdk");
 const { recordFields } = require("./recordSnapshot");
+const { attachDishPhonetics, buildTextSegments, transcribeAudio } = require("./speechService");
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
@@ -516,7 +517,7 @@ const getAllDishes = async (event) => {
       list = list.concat(res.data);
     });
 
-    return { success: true, data: { list, total } };
+    return { success: true, data: { list: attachDishPhonetics(list), total } };
   } catch (e) {
     return { success: false, errMsg: e.message || "获取全部菜品失败" };
   }
@@ -965,6 +966,34 @@ const consumeCelebration = async (event) => {
   }
 };
 
+// ============ 语音识别模块 ============
+
+// 语音转文字并切分短语（调用阿里开源 SenseVoiceSmall）
+const recognizeSpeech = async (event) => {
+  try {
+    const { username, audioBase64, format = "mp3", knownDishNames = [] } = event;
+    if (!username) {
+      return { success: false, errMsg: "用户名不能为空" };
+    }
+    const data = await transcribeAudio({ audioBase64, format, knownDishNames });
+    return { success: true, data };
+  } catch (e) {
+    console.error("语音识别失败:", e);
+    return { success: false, errMsg: e.message || "语音识别失败" };
+  }
+};
+
+// 对手动修改后的文本重新分词并附加拼音索引
+const parseVoiceText = async (event) => {
+  try {
+    const { text = "", knownDishNames = [] } = event;
+    const segments = buildTextSegments(text, knownDishNames);
+    return { success: true, data: { rawText: String(text || "").trim(), segments } };
+  } catch (e) {
+    return { success: false, errMsg: e.message || "文本解析失败" };
+  }
+};
+
 // 云函数入口函数
 exports.main = async (event, context) => {
   switch (event.type) {
@@ -1025,6 +1054,11 @@ exports.main = async (event, context) => {
       return await checkCelebration(event);
     case "consumeCelebration":
       return await consumeCelebration(event);
+    // 语音识别模块
+    case "recognizeSpeech":
+      return await recognizeSpeech(event);
+    case "parseVoiceText":
+      return await parseVoiceText(event);
     default:
       return { success: false, errMsg: "未知的操作类型" };
   }

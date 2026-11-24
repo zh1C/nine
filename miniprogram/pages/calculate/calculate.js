@@ -1,6 +1,42 @@
 // pages/calculate/calculate.js
 const { createRow, sortRows } = require("../../utils/ingredientTable");
 const drafts = require("../../utils/calculateDraft");
+const {
+  splitSpokenDishes,
+  matchDishesInCategory,
+  toggleVoiceCandidate,
+  collectSelectedDishIds,
+} = require("../../utils/voiceDishMatcher");
+
+let activeVoicePage = null;
+let recorderInitialized = false;
+
+function getSharedRecorder() {
+  const manager = wx.getRecorderManager();
+  if (!recorderInitialized) {
+    recorderInitialized = true;
+    manager.onStart(() => {
+      if (activeVoicePage) activeVoicePage._onRecorderStart();
+    });
+    manager.onStop((res) => {
+      if (activeVoicePage) activeVoicePage._onRecorderStop(res);
+    });
+    manager.onError((err) => {
+      if (activeVoicePage) activeVoicePage._onRecorderError(err);
+    });
+  }
+  return manager;
+}
+
+function getTouchClientY(e) {
+  if (e && e.touches && e.touches[0] && typeof e.touches[0].clientY === "number") {
+    return e.touches[0].clientY;
+  }
+  if (e && e.detail && typeof e.detail.clientY === "number") {
+    return e.detail.clientY;
+  }
+  return 0;
+}
 
 function menuDish(dish) {
   return {
@@ -48,9 +84,32 @@ Page({
     detailIngredients: [],
     detailGardens: [],
     detailIngExpanded: false,
+
+    // 语音报菜与识别确认弹窗
+    voiceRecording: false,
+    voiceCancelMove: false,
+    voiceRecognizing: false,
+    showVoiceResult: false,
+    voiceTargetLabel: "",
+    voiceRawText: "",
+    voiceSegments: [],
+    voiceItems: [],
+    voiceSelectedCount: 0,
+    voiceRematching: false,
   },
 
   async onLoad(options) {
+    activeVoicePage = this;
+    this._voicePressing = false;
+    this._recorderRunning = false;
+    this._hasRecordAuth = false;
+    wx.getSetting({
+      success: (res) => {
+        if (res.authSetting && res.authSetting["scope.record"] === true) {
+          this._hasRecordAuth = true;
+        }
+      },
+    });
     this._fromHistory = options && options.from === 'history';
     this._session = { owner: drafts.username(), ref: null };
     const now = new Date();
@@ -64,8 +123,33 @@ Page({
     return this.retryLoad();
   },
 
-  onShow() {
+  async onShow() {
+    activeVoicePage = this;
     this.refreshDraftChoices();
+    const app = getApp();
+    if (app.globalData.dishListNeedRefresh) {
+      app.globalData.dishListNeedRefresh = false;
+      try {
+        await this.loadAllDishes();
+        this.updateCurrentCategoryView();
+        if (this.data.showVoiceResult) {
+          this.rematchCurrentVoiceResult(true);
+        }
+      } catch (e) {
+        console.error("同步最新菜品列表失败", e);
+      }
+    }
+  },
+
+  onHide() {
+    this._abortVoiceRecordingIfNeeded();
+  },
+
+  onUnload() {
+    this._abortVoiceRecordingIfNeeded();
+    if (activeVoicePage === this) {
+      activeVoicePage = null;
+    }
   },
 
   // 重新加载
@@ -380,6 +464,382 @@ Page({
     const { dailyDishes, dailySubTab } = this.data;
     const day = dailyDishes[date] || { student: [], teacher: [] };
     this.commitMenu({ dailyDishes: { ...dailyDishes, [date]: { ...day, [dailySubTab]: dishes } } });
+  },
+
+  // 批量将多道菜加入当前日期+餐别（单次 commitMenu 写入本地草稿）
+  batchAddCurrentCategoryDishes(dishIds = []) {
+    const { selectedDates, currentDateIdx, dailyDishes, dailySubTab, filteredDishes } = this.data;
+    if (!selectedDates.length || !dishIds.length) return 0;
+    const currentDate = selectedDates[currentDateIdx];
+    const dayData = dailyDishes[currentDate] || { student: [], teacher: [] };
+    const existing = [...(dayData[dailySubTab] || [])];
+    const existingSet = new Set(existing.map((d) => d._id));
+    const dishMap = {};
+    filteredDishes.forEach((d) => {
+      dishMap[d._id] = d;
+    });
+
+    let added = 0;
+    for (const id of dishIds) {
+      if (existingSet.has(id)) continue;
+      const dish = dishMap[id];
+      if (!dish) continue;
+      existingSet.add(id);
+      existing.push(menuDish(dish));
+      added++;
+    }
+
+    if (added > 0) {
+      this.saveCategoryDishes(currentDate, existing);
+    }
+    return added;
+  },
+
+  // ========== 语音报菜与识别结果弹窗 ==========
+  _abortVoiceRecordingIfNeeded() {
+    this._voicePressing = false;
+    this._ignoreNextStop = true;
+    if (this._recorderRunning) {
+      try {
+        getSharedRecorder().stop();
+      } catch (e) {
+        // ignore
+      }
+      this._recorderRunning = false;
+    }
+    if (this.data.voiceRecording || this.data.voiceCancelMove) {
+      this.setData({ voiceRecording: false, voiceCancelMove: false });
+    }
+  },
+
+  onVoiceTouchStart(e) {
+    if (this.data.voiceRecognizing) return;
+    if (this.data.selectedDates.length === 0) {
+      wx.showToast({ title: "请先选择日期", icon: "none" });
+      return;
+    }
+
+    activeVoicePage = this;
+
+    // 首次未授权时先完成权限引导，避免系统授权弹窗打断触摸流导致录音卡住
+    if (!this._hasRecordAuth) {
+      this._voicePressing = false;
+      wx.getSetting({
+        success: (res) => {
+          const auth = res.authSetting && res.authSetting["scope.record"];
+          if (auth === true) {
+            this._hasRecordAuth = true;
+            wx.showToast({ title: "麦克风已就绪，请按住说话", icon: "none" });
+          } else if (auth === false) {
+            wx.showModal({
+              title: "需要麦克风权限",
+              content: "请在设置中开启麦克风权限，以使用语音识别添加菜品",
+              confirmText: "去开启",
+              success: (mRes) => {
+                if (mRes.confirm) {
+                  wx.openSetting({
+                    success: (sRes) => {
+                      if (sRes.authSetting && sRes.authSetting["scope.record"]) {
+                        this._hasRecordAuth = true;
+                      }
+                    },
+                  });
+                }
+              },
+            });
+          } else {
+            wx.authorize({
+              scope: "scope.record",
+              success: () => {
+                this._hasRecordAuth = true;
+                wx.showToast({ title: "授权成功，请按住说话", icon: "none" });
+              },
+              fail: () => {
+                wx.showToast({ title: "未授予麦克风权限", icon: "none" });
+              },
+            });
+          }
+        },
+      });
+      return;
+    }
+
+    this.updateCurrentCategoryView();
+    this._voiceStartY = getTouchClientY(e);
+    this._voicePressing = true;
+    this._ignoreNextStop = false;
+    this._recordStartTs = Date.now();
+
+    this.setData({
+      voiceRecording: true,
+      voiceCancelMove: false,
+    });
+
+    if (wx.vibrateShort) {
+      wx.vibrateShort({ type: "light" });
+    }
+
+    getSharedRecorder().start({
+      duration: 30000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: "mp3",
+    });
+  },
+
+  onVoiceTouchMove(e) {
+    if (!this._voicePressing || !this.data.voiceRecording) return;
+    const currentY = getTouchClientY(e);
+    if (!currentY || !this._voiceStartY) return;
+    const cancelMove = this._voiceStartY - currentY > 60;
+    if (cancelMove !== this.data.voiceCancelMove) {
+      this.setData({ voiceCancelMove: cancelMove });
+    }
+  },
+
+  onVoiceTouchEnd() {
+    if (!this._voicePressing) return;
+    this._voicePressing = false;
+    if (this._recorderRunning) {
+      getSharedRecorder().stop();
+    } else {
+      // 用户在 onStart 触发前极快松手：等待 _onRecorderStart 捕获后立即停止并忽略
+      this._ignoreNextStop = true;
+      this.setData({ voiceRecording: false, voiceCancelMove: false });
+      wx.showToast({ title: "说话时间太短", icon: "none" });
+    }
+  },
+
+  onVoiceTouchCancel() {
+    this._voicePressing = false;
+    this._ignoreNextStop = true;
+    if (this._recorderRunning) {
+      getSharedRecorder().stop();
+    }
+    this.setData({ voiceRecording: false, voiceCancelMove: false });
+  },
+
+  _onRecorderStart() {
+    this._recorderRunning = true;
+    this._recordStartTs = Date.now();
+    if (!this._voicePressing) {
+      this._ignoreNextStop = true;
+      getSharedRecorder().stop();
+    }
+  },
+
+  _onRecorderError(err) {
+    console.error("录音异常:", err);
+    this._voicePressing = false;
+    this._recorderRunning = false;
+    this.setData({ voiceRecording: false, voiceCancelMove: false });
+    const msg = (err && err.errMsg) || "";
+    if (msg.includes("auth") || msg.includes("authorize")) {
+      this._hasRecordAuth = false;
+      wx.showToast({ title: "请先授予麦克风权限", icon: "none" });
+    } else {
+      wx.showToast({ title: "录音启动失败，请重试", icon: "none" });
+    }
+  },
+
+  async _onRecorderStop(res) {
+    this._recorderRunning = false;
+    const wasCancel = this.data.voiceCancelMove || this._ignoreNextStop;
+    this._ignoreNextStop = false;
+    this.setData({ voiceRecording: false, voiceCancelMove: false });
+
+    if (wasCancel) return;
+
+    const duration = (res && res.duration) || (Date.now() - (this._recordStartTs || 0));
+    if (!res || !res.tempFilePath || duration < 600) {
+      wx.showToast({ title: "说话时间太短", icon: "none" });
+      return;
+    }
+
+    let audioBase64 = "";
+    try {
+      audioBase64 = wx.getFileSystemManager().readFileSync(res.tempFilePath, "base64");
+    } catch (readErr) {
+      console.error("读取录音文件失败:", readErr);
+      wx.showToast({ title: "读取录音失败，请重试", icon: "none" });
+      return;
+    }
+
+    const app = getApp();
+    const username = app.globalData.userInfo ? app.globalData.userInfo.username : "";
+    const knownDishNames = (this.data.filteredDishes || []).map((d) => d.name);
+
+    this.setData({ voiceRecognizing: true });
+    wx.showLoading({ title: "语音识别中...", mask: true });
+
+    try {
+      const cfRes = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: {
+          type: "recognizeSpeech",
+          username,
+          audioBase64,
+          format: "mp3",
+          knownDishNames,
+        },
+      });
+
+      if (!cfRes.result || !cfRes.result.success) {
+        wx.showToast({
+          title: (cfRes.result && cfRes.result.errMsg) || "语音识别失败",
+          icon: "none",
+        });
+        return;
+      }
+
+      const { rawText = "", segments = [] } = cfRes.result.data || {};
+      if (!rawText.trim()) {
+        wx.showToast({ title: "未识别到有效语音，请重试", icon: "none" });
+        return;
+      }
+
+      const effectiveSegments = segments.length > 0 ? segments : [{ text: rawText.trim(), _py: "", _pyFuzzy: "" }];
+      this._openVoiceResultModal(rawText, effectiveSegments);
+    } catch (err) {
+      console.error("调用语音识别云函数失败:", err);
+      wx.showToast({ title: "识别请求失败，请检查网络或云函数配置", icon: "none" });
+    } finally {
+      this.setData({ voiceRecognizing: false });
+      wx.hideLoading();
+    }
+  },
+
+  _buildVoiceTargetLabel() {
+    const { dateTabList, currentDateIdx, selectedDates, dailySubTab } = this.data;
+    const datePart = (dateTabList[currentDateIdx] && dateTabList[currentDateIdx].label) || selectedDates[currentDateIdx] || "";
+    const catPart = dailySubTab === "student" ? "学生餐" : "老师餐";
+    return `${datePart} · ${catPart}`;
+  },
+
+  _openVoiceResultModal(rawText, segments) {
+    const voiceItems = matchDishesInCategory({
+      segments,
+      candidateDishes: this.data.filteredDishes,
+      selectedDishes: this.data.currentCategoryDishes,
+      gardens: this.data.gardens,
+    });
+    const voiceSelectedCount = collectSelectedDishIds(voiceItems).length;
+    this.setData({
+      showVoiceResult: true,
+      voiceTargetLabel: this._buildVoiceTargetLabel(),
+      voiceRawText: rawText,
+      voiceSegments: segments,
+      voiceItems,
+      voiceSelectedCount,
+    });
+  },
+
+  // 菜品库新增返回或编辑文本后重新匹配当前弹窗结果
+  rematchCurrentVoiceResult(preserveChecked = false) {
+    const prevCheckedSet = new Set(
+      preserveChecked ? collectSelectedDishIds(this.data.voiceItems) : []
+    );
+    let voiceItems = matchDishesInCategory({
+      segments: this.data.voiceSegments,
+      candidateDishes: this.data.filteredDishes,
+      selectedDishes: this.data.currentCategoryDishes,
+      gardens: this.data.gardens,
+    });
+
+    if (preserveChecked && prevCheckedSet.size > 0) {
+      voiceItems = voiceItems.map((item) => {
+        if (item.status !== "multiple") return item;
+        const candidates = item.candidates.map((c) =>
+          prevCheckedSet.has(c._id) ? { ...c, checked: true } : c
+        );
+        return {
+          ...item,
+          candidates,
+          selectedIds: candidates.filter((c) => c.checked).map((c) => c._id),
+        };
+      });
+    }
+
+    this.setData({
+      voiceItems,
+      voiceSelectedCount: collectSelectedDishIds(voiceItems).length,
+    });
+  },
+
+  onVoiceRawTextInput(e) {
+    this.setData({ voiceRawText: e.detail.value });
+  },
+
+  async handleVoiceRematch() {
+    if (this.data.voiceRematching) return;
+    const rawText = (this.data.voiceRawText || "").trim();
+    if (!rawText) {
+      wx.showToast({ title: "请输入要匹配的菜名文本", icon: "none" });
+      return;
+    }
+
+    const knownDishNames = (this.data.filteredDishes || []).map((d) => d.name);
+    this.setData({ voiceRematching: true });
+
+    let segments = [];
+    try {
+      const res = await wx.cloud.callFunction({
+        name: "quickstartFunctions",
+        data: { type: "parseVoiceText", text: rawText, knownDishNames },
+      });
+      if (res.result && res.result.success && res.result.data) {
+        segments = res.result.data.segments || [];
+      }
+    } catch (e) {
+      // 网络波动时降级使用本地分词
+      segments = splitSpokenDishes(rawText, knownDishNames).map((text) => ({ text, _py: "", _pyFuzzy: "" }));
+    } finally {
+      this.setData({ voiceRematching: false });
+    }
+
+    if (segments.length === 0) {
+      segments = [{ text: rawText, _py: "", _pyFuzzy: "" }];
+    }
+    this._openVoiceResultModal(rawText, segments);
+  },
+
+  toggleVoiceDish(e) {
+    const itemIdx = Number(e.currentTarget.dataset.itemIdx);
+    const dishId = e.currentTarget.dataset.dishId;
+    if (Number.isNaN(itemIdx) || !dishId) return;
+    const voiceItems = toggleVoiceCandidate(this.data.voiceItems, itemIdx, dishId);
+    this.setData({
+      voiceItems,
+      voiceSelectedCount: collectSelectedDishIds(voiceItems).length,
+    });
+  },
+
+  goAddUnmatchedDish(e) {
+    const dishName = e.currentTarget.dataset.name || "";
+    const category = this.data.dailySubTab;
+    wx.navigateTo({
+      url: `/pages/dishEdit/dishEdit?category=${category}&name=${encodeURIComponent(dishName)}`,
+    });
+  },
+
+  confirmVoiceAdd() {
+    const dishIds = collectSelectedDishIds(this.data.voiceItems);
+    if (dishIds.length === 0) {
+      wx.showToast({ title: "请先勾选要添加的菜品", icon: "none" });
+      return;
+    }
+    const addedCount = this.batchAddCurrentCategoryDishes(dishIds);
+    this.setData({ showVoiceResult: false });
+    if (addedCount > 0) {
+      wx.showToast({ title: `已添加 ${addedCount} 道菜`, icon: "success" });
+    } else {
+      wx.showToast({ title: "所选菜品已在当天菜单中", icon: "none" });
+    }
+  },
+
+  closeVoiceResult() {
+    this.setData({ showVoiceResult: false });
   },
 
   // ========== 配料详情弹窗 ==========

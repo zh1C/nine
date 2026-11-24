@@ -19,6 +19,16 @@
       bindkeyboardheightchange="onKeyboardHeightChange"
       bindinput="onInputSearch"
     />
+    <view
+      class="picker-voice-btn {{voiceRecording ? 'recording' : ''}}"
+      catchtouchstart="onVoiceTouchStart"
+      catchtouchmove="onVoiceTouchMove"
+      catchtouchend="onVoiceTouchEnd"
+      catchtouchcancel="onVoiceTouchCancel"
+    >
+      <text class="picker-voice-icon">🎤</text>
+      <text class="picker-voice-label">{{voiceRecording ? '松开识别' : '按住报菜'}}</text>
+    </view>
   </view>
 
   <view class="selection-bar">

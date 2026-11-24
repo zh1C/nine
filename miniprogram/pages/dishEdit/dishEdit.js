@@ -39,7 +39,16 @@ Page({
       this.loadData(options.id);
     } else {
       wx.setNavigationBarTitle({ title: "新增菜品" });
+      let initialName = "";
+      if (options.name) {
+        try {
+          initialName = decodeURIComponent(options.name).trim();
+        } catch (e) {
+          initialName = String(options.name).trim();
+        }
+      }
       this.setData({
+        name: initialName,
         ingredients: [{ name: "", unit: "kg", type: "蔬菜", advance: false, reuse: false }],
         category: options.category || "student",
       });

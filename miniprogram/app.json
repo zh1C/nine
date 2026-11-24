@@ -19,6 +19,11 @@
     "navigationBarTitleText": "9号菜单",
     "navigationBarTextStyle": "white"
   },
+  "permission": {
+    "scope.record": {
+      "desc": "需要使用您的麦克风，用于语音识别添加菜品"
+    }
+  },
   "sitemapLocation": "sitemap.json",
   "style": "v2",
   "lazyCodeLoading": "requiredComponents"

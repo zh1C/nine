@@ -17,6 +17,10 @@ Component({
       type: Array,
       value: [],
     },
+    voiceRecording: {
+      type: Boolean,
+      value: false,
+    },
   },
 
   data: {
@@ -113,6 +117,25 @@ Component({
     handleClose() {
       if (this.data.keyboardMaxHeight !== null) wx.hideKeyboard();
       this.triggerEvent("close");
+    },
+
+    onVoiceTouchStart(e) {
+      if (this.data.keyboardMaxHeight !== null) wx.hideKeyboard();
+      const touch = (e.touches && e.touches[0]) || {};
+      this.triggerEvent("voicestart", { clientY: touch.clientY || 0 });
+    },
+
+    onVoiceTouchMove(e) {
+      const touch = (e.touches && e.touches[0]) || {};
+      this.triggerEvent("voicemove", { clientY: touch.clientY || 0 });
+    },
+
+    onVoiceTouchEnd() {
+      this.triggerEvent("voiceend");
+    },
+
+    onVoiceTouchCancel() {
+      this.triggerEvent("voicecancel");
     },
   },
 });

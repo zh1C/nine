@@ -1,5 +1,5 @@
 <!--pages/calculate/calculate.wxml-->
-<page-meta page-style="{{showPicker ? 'overflow: hidden;' : ''}}" />
+<page-meta page-style="{{(showPicker || showDetail || showVoiceResult) ? 'overflow: hidden;' : ''}}" />
 <view class="calculate-page">
   <view wx:if="{{draftChoices.length}}" class="card">
     <view class="draft-header">
@@ -146,9 +146,21 @@
       </view>
     </view>
 
-    <!-- 添加菜品按钮 -->
-    <view class="add-dish-btn" bindtap="showDishPicker">
-      <text>+ 添加{{dailySubTab === 'student' ? '学生' : '老师'}}菜品（可搜索）</text>
+    <!-- 添加菜品与语音报菜操作栏 -->
+    <view class="add-dish-actions">
+      <view class="add-dish-btn" bindtap="showDishPicker">
+        <text>+ 搜索添加{{dailySubTab === 'student' ? '学生' : '老师'}}菜品</text>
+      </view>
+      <view
+        class="voice-dish-btn {{voiceRecording ? 'recording' : ''}}"
+        catchtouchstart="onVoiceTouchStart"
+        catchtouchmove="onVoiceTouchMove"
+        catchtouchend="onVoiceTouchEnd"
+        catchtouchcancel="onVoiceTouchCancel"
+      >
+        <text class="voice-btn-icon">🎤</text>
+        <text class="voice-btn-text">{{voiceRecording ? '松开识别' : '按住报菜'}}</text>
+      </view>
     </view>
   </view>
 
@@ -164,10 +176,142 @@
     title="{{dailySubTab === 'student' ? '添加学生菜品' : '添加老师菜品'}}"
     selectedDishes="{{pickerSelectedDishes}}"
     allDishes="{{filteredDishes}}"
+    voiceRecording="{{voiceRecording}}"
     bind:add="onPickerAdd"
     bind:remove="removeDailyDish"
     bind:close="onPickerClose"
+    bind:voicestart="onVoiceTouchStart"
+    bind:voicemove="onVoiceTouchMove"
+    bind:voiceend="onVoiceTouchEnd"
+    bind:voicecancel="onVoiceTouchCancel"
   />
+
+  <!-- 录音中全屏提示浮层 -->
+  <view class="voice-recording-toast {{voiceCancelMove ? 'cancel-mode' : ''}}" wx:if="{{voiceRecording}}">
+    <view class="voice-wave">
+      <view class="wave-bar b1"></view>
+      <view class="wave-bar b2"></view>
+      <view class="wave-bar b3"></view>
+      <view class="wave-bar b4"></view>
+      <view class="wave-bar b5"></view>
+    </view>
+    <text class="voice-toast-title">{{voiceCancelMove ? '松开手指，取消识别' : '正在聆听… 松开手指识别'}}</text>
+    <text class="voice-toast-tip">{{voiceCancelMove ? '已进入取消区域' : '请连贯报出菜名，如：红烧排骨、番茄炒蛋、紫菜汤'}}</text>
+    <text class="voice-toast-sub">{{voiceCancelMove ? '' : '手指上滑可取消'}}</text>
+  </view>
+
+  <!-- 语音识别结果确认弹窗（每次识别均弹出，由用户手动确认添加） -->
+  <view class="detail-mask voice-result-mask" wx:if="{{showVoiceResult}}" bindtap="closeVoiceResult">
+    <view class="detail-panel voice-result-panel" catchtap="preventBubble">
+      <view class="detail-handle"></view>
+
+      <!-- 头部 -->
+      <view class="detail-hd">
+        <text class="voice-hd-icon">🎤</text>
+        <text class="detail-name">语音识别结果确认</text>
+        <view class="detail-tag">{{voiceTargetLabel}}</view>
+      </view>
+
+      <!-- 识别原文编辑与重匹配栏 -->
+      <view class="voice-raw-bar">
+        <input
+          class="voice-raw-input"
+          value="{{voiceRawText}}"
+          placeholder="识别文本（可手动改字后点重新匹配）"
+          bindinput="onVoiceRawTextInput"
+          confirm-type="done"
+          bindconfirm="handleVoiceRematch"
+        />
+        <view class="voice-rematch-btn" bindtap="handleVoiceRematch">
+          {{voiceRematching ? '匹配中' : '重新匹配'}}
+        </view>
+      </view>
+
+      <!-- 词条匹配列表 -->
+      <scroll-view class="detail-body voice-result-body" scroll-y>
+        <view wx:for="{{voiceItems}}" wx:key="id" wx:for-index="vIdx" class="voice-seg-card">
+          <view class="voice-seg-hd">
+            <text class="voice-spoken">「{{item.spokenText}}」</text>
+            <text class="voice-status-tag tag-{{item.status}}">{{item.matchTag}}</text>
+          </view>
+
+          <!-- 唯一高置信命中 -->
+          <block wx:if="{{item.status === 'matched'}}">
+            <view
+              wx:for="{{item.candidates}}"
+              wx:for-item="cand"
+              wx:key="_id"
+              class="voice-cand-row {{cand.checked ? 'checked' : ''}}"
+              data-item-idx="{{vIdx}}"
+              data-dish-id="{{cand._id}}"
+              bindtap="toggleVoiceDish"
+            >
+              <view class="voice-checkbox {{cand.checked ? 'checked' : ''}}">{{cand.checked ? '✓' : ''}}</view>
+              <view class="voice-cand-info">
+                <text class="voice-cand-name">{{cand.name}}</text>
+                <text class="voice-cand-summary">{{cand.summary}}</text>
+              </view>
+            </view>
+          </block>
+
+          <!-- 近似或多候选：由用户手动点选 -->
+          <block wx:elif="{{item.status === 'multiple'}}">
+            <text class="voice-multi-hint">请手动点选需要添加的菜品：</text>
+            <view class="voice-cand-list">
+              <view
+                wx:for="{{item.candidates}}"
+                wx:for-item="cand"
+                wx:key="_id"
+                class="voice-cand-row {{cand.checked ? 'checked' : ''}}"
+                data-item-idx="{{vIdx}}"
+                data-dish-id="{{cand._id}}"
+                bindtap="toggleVoiceDish"
+              >
+                <view class="voice-checkbox {{cand.checked ? 'checked' : ''}}">{{cand.checked ? '✓' : ''}}</view>
+                <view class="voice-cand-info">
+                  <text class="voice-cand-name">{{cand.name}}</text>
+                  <text class="voice-cand-summary">{{cand.summary}}</text>
+                </view>
+              </view>
+            </view>
+          </block>
+
+          <!-- 已在当天菜单中 -->
+          <view wx:elif="{{item.status === 'already_selected'}}" class="voice-already-row">
+            <text class="voice-already-text">已选菜品「{{item.matchedDishName}}」，无需重复添加</text>
+          </view>
+
+          <!-- 当前餐别未找到 -->
+          <view wx:else class="voice-unmatched-row">
+            <text class="voice-unmatched-text">当前{{dailySubTab === 'student' ? '学生' : '老师'}}菜品库中暂无此菜</text>
+            <view class="voice-add-new-btn" data-name="{{item.spokenText}}" bindtap="goAddUnmatchedDish">
+              + 去新增菜品
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 底部操作栏 -->
+      <view class="voice-footer">
+        <view class="voice-cancel-btn" bindtap="closeVoiceResult">取消</view>
+        <view
+          class="voice-rerecord-btn {{voiceRecording ? 'recording' : ''}}"
+          catchtouchstart="onVoiceTouchStart"
+          catchtouchmove="onVoiceTouchMove"
+          catchtouchend="onVoiceTouchEnd"
+          catchtouchcancel="onVoiceTouchCancel"
+        >
+          🎤 按住重录
+        </view>
+        <view
+          class="voice-confirm-btn {{voiceSelectedCount > 0 ? '' : 'disabled'}}"
+          bindtap="confirmVoiceAdd"
+        >
+          确认添加（{{voiceSelectedCount}}道）
+        </view>
+      </view>
+    </view>
+  </view>
 
   <!-- 配料详情弹窗 -->
   <view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
