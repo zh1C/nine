@@ -254,9 +254,33 @@
             </view>
           </block>
 
-          <!-- 近似或多候选：由用户手动点选 -->
+          <!-- 原名称命中 + 归一化包含备选（原名置顶默认勾选，全部采用独立复选框） -->
+          <block wx:elif="{{item.status === 'matched_variants'}}">
+            <view class="voice-cand-list">
+              <block wx:for="{{item.candidates}}" wx:for-item="cand" wx:for-index="cIdx" wx:key="_id">
+                <text wx:if="{{cIdx === 1}}" class="voice-variant-divider">关联备选菜品（独立勾选，互不排斥）：</text>
+                <view
+                  class="voice-cand-row {{cand.checked ? 'checked' : ''}}"
+                  data-item-idx="{{vIdx}}"
+                  data-dish-id="{{cand._id}}"
+                  bindtap="toggleVoiceDish"
+                >
+                  <view class="voice-checkbox {{cand.checked ? 'checked' : ''}}">{{cand.checked ? '✓' : ''}}</view>
+                  <view class="voice-cand-info">
+                    <view class="voice-cand-title-row">
+                      <text class="voice-cand-name">{{cand.name}}</text>
+                      <text wx:if="{{cand.isPrimary}}" class="voice-primary-badge">原名</text>
+                    </view>
+                    <text class="voice-cand-summary">{{cand.summary}}</text>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </block>
+
+          <!-- 包含或模糊多候选：独立复选框由用户手动勾选 -->
           <block wx:elif="{{item.status === 'multiple'}}">
-            <text class="voice-multi-hint">请手动点选需要添加的菜品：</text>
+            <text class="voice-multi-hint">请勾选需要添加的菜品（可多选）：</text>
             <view class="voice-cand-list">
               <view
                 wx:for="{{item.candidates}}"

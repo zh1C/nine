@@ -1,4 +1,6 @@
 // components/dishPicker/dishPicker.js
+const { searchDishesForPicker } = require("../../utils/voiceDishMatcher");
+
 Component({
   properties: {
     show: {
@@ -80,9 +82,7 @@ Component({
 
     matchingDishes(keyword) {
       const { allDishes, selectedDishes } = this.properties;
-      const query = keyword.trim().toLowerCase();
-      const excluded = new Set(selectedDishes.map(dish => dish._id));
-      return allDishes.filter(d => !excluded.has(d._id) && d.name.toLowerCase().includes(query));
+      return searchDishesForPicker(allDishes, selectedDishes, keyword);
     },
 
     refreshDishes() {

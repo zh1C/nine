@@ -737,9 +737,15 @@ Page({
 
   // 菜品库新增返回或编辑文本后重新匹配当前弹窗结果
   rematchCurrentVoiceResult(preserveChecked = false) {
-    const prevCheckedSet = new Set(
-      preserveChecked ? collectSelectedDishIds(this.data.voiceItems) : []
-    );
+    const prevStateMap = new Map();
+    if (preserveChecked) {
+      for (const oldItem of this.data.voiceItems || []) {
+        for (const oldCand of oldItem.candidates || []) {
+          prevStateMap.set(`${oldItem.spokenText}::${oldCand._id}`, !!oldCand.checked);
+        }
+      }
+    }
+
     let voiceItems = matchDishesInCategory({
       segments: this.data.voiceSegments,
       candidateDishes: this.data.filteredDishes,
@@ -747,12 +753,13 @@ Page({
       gardens: this.data.gardens,
     });
 
-    if (preserveChecked && prevCheckedSet.size > 0) {
+    if (preserveChecked && prevStateMap.size > 0) {
       voiceItems = voiceItems.map((item) => {
-        if (item.status !== "multiple") return item;
-        const candidates = item.candidates.map((c) =>
-          prevCheckedSet.has(c._id) ? { ...c, checked: true } : c
-        );
+        if (!item.candidates || item.candidates.length === 0) return item;
+        const candidates = item.candidates.map((c) => {
+          const key = `${item.spokenText}::${c._id}`;
+          return prevStateMap.has(key) ? { ...c, checked: prevStateMap.get(key) } : c;
+        });
         return {
           ...item,
           candidates,

@@ -51,23 +51,24 @@ function normalizeFuzzySyllable(syllable) {
 
 function toPhonetics(text) {
   if (!pinyinFn || !text || typeof text !== "string") {
-    return { _py: "", _pyFuzzy: "" };
+    return { _py: "", _pyFuzzy: "", _pyInit: "" };
   }
   const compact = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, "");
-  if (!compact) return { _py: "", _pyFuzzy: "" };
+  if (!compact) return { _py: "", _pyFuzzy: "", _pyInit: "" };
   try {
     const arr = pinyinFn(compact, { toneType: "none", type: "array" });
     if (!Array.isArray(arr) || arr.length === 0) {
-      return { _py: "", _pyFuzzy: "" };
+      return { _py: "", _pyFuzzy: "", _pyInit: "" };
     }
     const lowerArr = arr.map((item) => String(item || "").toLowerCase().trim()).filter(Boolean);
     return {
       _py: lowerArr.join(" "),
       _pyFuzzy: lowerArr.map(normalizeFuzzySyllable).join(" "),
+      _pyInit: lowerArr.map((s) => s[0] || "").join(""),
     };
   } catch (e) {
     console.warn("[speechService] 拼音转换失败:", e.message);
-    return { _py: "", _pyFuzzy: "" };
+    return { _py: "", _pyFuzzy: "", _pyInit: "" };
   }
 }
 
@@ -75,8 +76,8 @@ function attachDishPhonetics(dishes) {
   if (!Array.isArray(dishes)) return [];
   return dishes.map((dish) => {
     if (!dish || !dish.name) return dish;
-    const { _py, _pyFuzzy } = toPhonetics(dish.name);
-    return { ...dish, _py, _pyFuzzy };
+    const { _py, _pyFuzzy, _pyInit } = toPhonetics(dish.name);
+    return { ...dish, _py, _pyFuzzy, _pyInit };
   });
 }
 

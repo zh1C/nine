@@ -897,6 +897,11 @@
   color: #2e7d32;
 }
 
+.tag-matched_variants {
+  background: #e0f2f1;
+  color: #00695c;
+}
+
 .tag-multiple {
   background: #fff8e1;
   color: #ef6c00;
@@ -966,6 +971,29 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+.voice-cand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.voice-primary-badge {
+  font-size: 19rpx;
+  padding: 2rpx 10rpx;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1rpx solid #a5d6a7;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+}
+
+.voice-variant-divider {
+  display: block;
+  font-size: 22rpx;
+  color: #777;
+  padding: 6rpx 2rpx 2rpx;
 }
 
 .voice-cand-name {
