@@ -7,6 +7,10 @@ const {
   saveGardenMeta,
   deleteGardenMeta,
 } = require("./gardenMetaService");
+const {
+  cartInitGarden,
+  cartProcessItems,
+} = require("./cartService");
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
@@ -1073,6 +1077,11 @@ exports.main = async (event, context) => {
       return await saveGardenMeta(event, { db, cloud });
     case "deleteGardenMeta":
       return await deleteGardenMeta(event, { db, cloud });
+    // 购物车模块（仅管理员）
+    case "cartInitGarden":
+      return await cartInitGarden(event, { db, cloud });
+    case "cartProcessItems":
+      return await cartProcessItems(event, { db, cloud });
     // 记录模块
     case "saveRecord":
       return await saveRecord(event);

@@ -315,6 +315,8 @@ async function deleteGardenMeta(event, { db, cloud }) {
 module.exports = {
   encryptPassword,
   decryptPassword,
+  verifyAdminIdentity,
+  verifyGardenOwner,
   getGardenMetaList,
   getGardenMetaDetail,
   saveGardenMeta,

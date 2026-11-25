@@ -1,0 +1,166 @@
+<!--pages/cartResult/cartResult.wxml-->
+<view class="result-page">
+  <!-- 顶部进度条 -->
+  <view class="progress-card" wx:if="{{running}}">
+    <view class="progress-text">{{progressText}}</view>
+    <view class="progress-track">
+      <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
+    </view>
+  </view>
+
+  <!-- 园区 Tab 栏 -->
+  <scroll-view class="garden-tabs" scroll-x>
+    <view class="tabs-inner">
+      <view
+        class="tab-item {{activeIdx === index ? 'active' : ''}}"
+        wx:for="{{gardens}}"
+        wx:key="gardenId"
+        bindtap="switchTab"
+        data-idx="{{index}}"
+      >
+        <text class="tab-name">{{item.name}}</text>
+        <text class="tab-badge ok" wx:if="{{item.status === 'DONE' && item.failedItems.length === 0}}">✓</text>
+        <text class="tab-badge warn" wx:elif="{{item.status === 'DONE' && item.failedItems.length > 0}}">{{item.failedItems.length}}</text>
+        <text class="tab-badge err" wx:elif="{{item.status === 'NO_META' || item.status === 'CART_NOT_EMPTY' || item.status === 'LOGIN_FAILED' || item.status === 'DLR_FAILED' || item.status === 'CHECK_CART_FAILED'}}">!</text>
+        <text class="tab-badge ing" wx:elif="{{item.status === 'RUNNING'}}">…</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 当前园区内容 -->
+  <block wx:if="{{gardens.length > 0}}">
+    <view class="garden-panel">
+      <!-- 园区概要 -->
+      <view class="summary-card">
+        <view class="summary-row">
+          <text class="summary-title">{{gardens[activeIdx].name}} · {{date}}</text>
+          <text class="summary-sub" wx:if="{{gardens[activeIdx].deptName}}">{{gardens[activeIdx].deptName}}</text>
+        </view>
+        <view class="summary-stats" wx:if="{{gardens[activeIdx].status === 'DONE' || gardens[activeIdx].status === 'RUNNING'}}">
+          <view class="stat-box">
+            <text class="stat-num ok">{{gardens[activeIdx].successItems.length}}</text>
+            <text class="stat-label">已加入</text>
+          </view>
+          <view class="stat-box">
+            <text class="stat-num warn">{{gardens[activeIdx].failedItems.length}}</text>
+            <text class="stat-label">待处理</text>
+          </view>
+          <view class="stat-box">
+            <text class="stat-num">{{gardens[activeIdx].totalCount}}</text>
+            <text class="stat-label">总菜品</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 阻断态：未配置元信息 -->
+      <view class="block-card" wx:if="{{gardens[activeIdx].status === 'NO_META'}}">
+        <text class="block-icon">🔐</text>
+        <text class="block-title">未配置园区账号密码</text>
+        <text class="block-desc">请先在「园区元信息」中配置该园区的登录账号和密码</text>
+        <view class="block-actions">
+          <button class="cart-btn-outline" bindtap="goGardenMeta">去配置元信息</button>
+          <button class="cart-btn-primary" disabled="{{running}}" bindtap="recheckGarden">重新检测</button>
+        </view>
+      </view>
+
+      <!-- 阻断态：购物车非空 -->
+      <view class="block-card" wx:elif="{{gardens[activeIdx].status === 'CART_NOT_EMPTY'}}">
+        <text class="block-icon">🛒</text>
+        <text class="block-title">购物车非空，已停止自动加购</text>
+        <text class="block-desc">当前购物车已有 {{gardens[activeIdx].cartCount}} 件商品（合计 ¥{{gardens[activeIdx].totalPrice}}），请先清空购物车后再继续</text>
+        <view class="block-actions">
+          <button class="cart-btn-primary" disabled="{{running}}" bindtap="recheckGarden">清空后重新检测</button>
+        </view>
+      </view>
+
+      <!-- 阻断态：登录 / dlr / 查购物车失败 -->
+      <view class="block-card" wx:elif="{{gardens[activeIdx].status === 'LOGIN_FAILED' || gardens[activeIdx].status === 'DLR_FAILED' || gardens[activeIdx].status === 'CHECK_CART_FAILED'}}">
+        <text class="block-icon">⚠️</text>
+        <text class="block-title">初始化失败</text>
+        <text class="block-desc">{{gardens[activeIdx].errMsg || '接口请求异常'}}</text>
+        <view class="block-actions">
+          <button class="cart-btn-primary" disabled="{{running}}" bindtap="recheckGarden">重试</button>
+        </view>
+      </view>
+
+      <!-- 空菜品 -->
+      <view class="block-card" wx:elif="{{gardens[activeIdx].status === 'EMPTY'}}">
+        <text class="block-icon">📭</text>
+        <text class="block-title">该园区当日无待加购菜品</text>
+      </view>
+
+      <!-- 异常菜品处理区 -->
+      <view class="section" wx:if="{{gardens[activeIdx].failedItems.length > 0}}">
+        <view class="section-title">待处理菜品（{{gardens[activeIdx].failedItems.length}}）</view>
+        <view class="fail-card" wx:for="{{gardens[activeIdx].failedItems}}" wx:key="rowId">
+          <view class="fail-head">
+            <view class="fail-head-left">
+              <text class="fail-origin-name">{{item.originalName}}</text>
+              <text class="fail-tag">{{item.statusLabel}}</text>
+            </view>
+            <text class="fail-weight">数量：{{item.weight}}</text>
+          </view>
+          <text class="fail-reason">{{item.reason}}</text>
+
+          <view class="edit-row">
+            <input
+              class="edit-input"
+              value="{{item.editName}}"
+              placeholder="请输入调整后的菜品名称"
+              bindinput="onEditNameInput"
+              data-item-idx="{{index}}"
+            />
+            <button
+              class="retry-one-btn"
+              disabled="{{running}}"
+              bindtap="retrySingleItem"
+              data-item-idx="{{index}}"
+            >重试</button>
+          </view>
+
+          <!-- 候选商品快捷选择 -->
+          <view class="candidate-wrap" wx:if="{{item.candidates.length > 0}}">
+            <text class="candidate-label">点击填入候选名称：</text>
+            <view class="candidate-list">
+              <view
+                class="candidate-chip"
+                wx:for="{{item.candidates}}"
+                wx:for-item="cand"
+                wx:for-index="candIdx"
+                wx:key="saleCode"
+                bindtap="pickCandidate"
+                data-item-idx="{{index}}"
+                data-name="{{cand.pdtname}}"
+              >
+                <text>{{cand.pdtname}}{{cand.unit ? ' (' + cand.unit + ')' : ''}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 成功菜品列表（可折叠） -->
+      <view class="section" wx:if="{{gardens[activeIdx].successItems.length > 0}}">
+        <view class="section-header" bindtap="toggleSuccess">
+          <text class="section-title">已成功加入购物车（{{gardens[activeIdx].successItems.length}}）</text>
+          <text class="toggle-text">{{gardens[activeIdx].showSuccess ? '收起 ▲' : '展开 ▼'}}</text>
+        </view>
+        <view class="success-list" wx:if="{{gardens[activeIdx].showSuccess}}">
+          <view class="success-item" wx:for="{{gardens[activeIdx].successItems}}" wx:key="rowId">
+            <text class="success-name">{{item.name}}</text>
+            <text class="success-qty">{{item.weight}} {{item.format}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 底部批量继续按钮 -->
+  <view class="bottom-bar" wx:if="{{gardens.length > 0 && gardens[activeIdx].failedItems.length > 0}}">
+    <button
+      class="continue-btn"
+      disabled="{{running}}"
+      bindtap="retryAllFailed"
+    >继续加入购物车（剩余 {{gardens[activeIdx].failedItems.length}} 项）</button>
+  </view>
+</view>

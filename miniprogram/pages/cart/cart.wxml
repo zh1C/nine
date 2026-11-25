@@ -1,0 +1,117 @@
+<!--pages/cart/cart.wxml-->
+<view class="cart-page" wx:if="{{hasPermission}}">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-wrap">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-input"
+        placeholder="搜索日期（如 2026-11）"
+        value="{{keyword}}"
+        bindinput="onKeywordInput"
+        bindconfirm="doSearch"
+        confirm-type="search"
+      />
+      <view wx:if="{{keyword}}" class="search-clear" bindtap="clearKeyword">✕</view>
+    </view>
+  </view>
+
+  <view class="tip-bar">请选择一条历史记录中的某一天进行自动加入购物车</view>
+
+  <!-- 历史记录列表 -->
+  <view class="record-list" wx:if="{{records.length > 0}}">
+    <view class="record-card" wx:for="{{records}}" wx:key="_id">
+      <view class="record-head">
+        <text class="record-gardens">{{item.gardenNames}}</text>
+        <text class="record-time">{{item.createTimeStr}}</text>
+      </view>
+      <view class="date-chips">
+        <view
+          class="date-chip {{selectedRecordId === item._id && selectedDate === d.full ? 'active' : ''}}"
+          wx:for="{{item.dates}}"
+          wx:for-item="d"
+          wx:key="full"
+          bindtap="selectDate"
+          data-record-id="{{item._id}}"
+          data-date="{{d.full}}"
+        >
+          <text>{{d.short}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && records.length === 0 && loaded}}">
+    <text class="empty-icon">📭</text>
+    <text class="empty-text">暂无历史记录</text>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="load-more" wx:if="{{records.length > 0}}">
+    <text wx:if="{{loading}}" class="load-more-text">加载中...</text>
+    <text wx:elif="{{noMore}}" class="load-more-text">— 已加载全部 —</text>
+    <view wx:else class="load-more-btn" bindtap="loadMore">
+      <text>加载更多</text>
+    </view>
+  </view>
+
+  <view class="loading-state" wx:if="{{loading && records.length === 0}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="selected-info">
+      <text class="selected-label">已选日期：</text>
+      <text class="selected-val">{{selectedDate || '未选择'}}</text>
+    </view>
+    <button
+      class="next-btn {{selectedDate ? '' : 'disabled'}}"
+      disabled="{{!selectedDate}}"
+      bindtap="openGardenModal"
+    >选择园区</button>
+  </view>
+
+  <!-- 园区选择弹窗 -->
+  <view class="modal-mask" wx:if="{{showGardenModal}}" bindtap="closeGardenModal">
+    <view class="modal-sheet" catchtap="noop">
+      <view class="modal-header">
+        <text class="modal-title">选择园区（{{selectedDate}}）</text>
+        <text class="modal-close" bindtap="closeGardenModal">✕</text>
+      </view>
+
+      <view class="modal-loading" wx:if="{{gardenLoading}}">
+        <text>正在加载园区与菜品数据...</text>
+      </view>
+
+      <scroll-view class="garden-list" scroll-y wx:else>
+        <view
+          class="garden-item {{item.selected ? 'selected' : ''}}"
+          wx:for="{{gardenOptions}}"
+          wx:key="gardenId"
+          bindtap="toggleGarden"
+          data-idx="{{index}}"
+        >
+          <view class="garden-check">{{item.selected ? '✓' : ''}}</view>
+          <view class="garden-info">
+            <view class="garden-name-row">
+              <text class="garden-name">{{item.name}}</text>
+              <text class="meta-tag {{item.hasMeta ? 'ok' : 'miss'}}">{{item.hasMeta ? '已配账号' : '未配账号'}}</text>
+            </view>
+            <text class="garden-count">待加购菜品：{{item.itemCount}} 项</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="modal-footer">
+        <button class="modal-cancel" bindtap="closeGardenModal">取消</button>
+        <button
+          class="modal-confirm {{selectedGardenCount > 0 ? '' : 'disabled'}}"
+          disabled="{{gardenLoading || selectedGardenCount === 0}}"
+          bindtap="confirmStart"
+        >开始加入购物车({{selectedGardenCount}})</button>
+      </view>
+    </view>
+  </view>
+</view>

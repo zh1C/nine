@@ -11,7 +11,9 @@
     "pages/profile/profile",
     "pages/userManage/userManage",
     "pages/gardenManage/gardenManage",
-    "pages/gardenMetaManage/gardenMetaManage"
+    "pages/gardenMetaManage/gardenMetaManage",
+    "pages/cart/cart",
+    "pages/cartResult/cartResult"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",
