@@ -10,7 +10,8 @@
     "pages/history/history",
     "pages/profile/profile",
     "pages/userManage/userManage",
-    "pages/gardenManage/gardenManage"
+    "pages/gardenManage/gardenManage",
+    "pages/gardenMetaManage/gardenMetaManage"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",

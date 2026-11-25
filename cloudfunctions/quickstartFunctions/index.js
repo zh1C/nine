@@ -1,6 +1,12 @@
 const cloud = require("wx-server-sdk");
 const { recordFields } = require("./recordSnapshot");
 const { attachDishPhonetics, buildTextSegments, transcribeAudio } = require("./speechService");
+const {
+  getGardenMetaList,
+  getGardenMetaDetail,
+  saveGardenMeta,
+  deleteGardenMeta,
+} = require("./gardenMetaService");
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV,
 });
@@ -68,6 +74,17 @@ const login = async (event) => {
       return { success: false, errMsg: "用户名或密码错误" };
     }
     const user = res.data[0];
+    // 同步最近登录的 OPENID，供敏感接口校验可信微信身份
+    const wxContext = cloud.getWXContext();
+    if (wxContext && wxContext.OPENID && user.lastOpenid !== wxContext.OPENID) {
+      try {
+        await db.collection("users").doc(user._id).update({
+          data: { lastOpenid: wxContext.OPENID },
+        });
+      } catch (openidErr) {
+        console.error("更新 lastOpenid 失败:", openidErr);
+      }
+    }
     return {
       success: true,
       data: {
@@ -745,6 +762,15 @@ const deleteGarden = async (event) => {
     if (res.stats.removed === 0) {
       return { success: false, errMsg: "园区不存在" };
     }
+    // 同步清理该园区的元信息（清理失败不影响园区删除结果）
+    try {
+      await db
+        .collection("garden_meta")
+        .where({ gardenId, username: operatorUsername })
+        .remove();
+    } catch (metaCleanErr) {
+      console.error("清理园区元信息失败:", metaCleanErr);
+    }
     // 同步清理该用户菜品中该园区的 ratios 数据（清理失败不影响删除结果）
     try {
       const gardenKey = String(gardenId);
@@ -1038,6 +1064,15 @@ exports.main = async (event, context) => {
       return await updateGarden(event);
     case "deleteGarden":
       return await deleteGarden(event);
+    // 园区元信息模块（仅管理员）
+    case "getGardenMetaList":
+      return await getGardenMetaList(event, { db, _, cloud });
+    case "getGardenMetaDetail":
+      return await getGardenMetaDetail(event, { db, cloud });
+    case "saveGardenMeta":
+      return await saveGardenMeta(event, { db, cloud });
+    case "deleteGardenMeta":
+      return await deleteGardenMeta(event, { db, cloud });
     // 记录模块
     case "saveRecord":
       return await saveRecord(event);
