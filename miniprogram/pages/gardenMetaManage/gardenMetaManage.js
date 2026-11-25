@@ -142,47 +142,6 @@ Page({
     }
   },
 
-  // 复制用户名
-  copyAccount(e) {
-    const account = e.currentTarget.dataset.account;
-    if (!account) return;
-    wx.setClipboardData({
-      data: account,
-      success: () => {
-        wx.showToast({ title: "已复制用户名", icon: "success" });
-      },
-    });
-  },
-
-  // 复制密码
-  async copyPassword(e) {
-    const gardenId = e.currentTarget.dataset.gardenId;
-    let password = this.data.revealedPasswords[gardenId];
-    if (!password) {
-      wx.showLoading({ title: "获取中..." });
-      try {
-        const detail = await this.fetchMetaDetail(gardenId);
-        password = detail.password;
-      } catch (err) {
-        console.error(err);
-        wx.showToast({ title: err.message || "获取密码失败", icon: "none" });
-        return;
-      } finally {
-        wx.hideLoading();
-      }
-    }
-    if (!password) {
-      wx.showToast({ title: "密码为空", icon: "none" });
-      return;
-    }
-    wx.setClipboardData({
-      data: password,
-      success: () => {
-        wx.showToast({ title: "已复制密码", icon: "success" });
-      },
-    });
-  },
-
   // 打开录入/编辑弹窗
   async openMetaDialog(e) {
     const garden = e.currentTarget.dataset.garden;

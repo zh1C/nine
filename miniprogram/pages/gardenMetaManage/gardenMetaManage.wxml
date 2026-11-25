@@ -26,18 +26,12 @@
         <view class="meta-row">
           <text class="meta-label">用户名</text>
           <text class="meta-value">{{item.accountUsername}}</text>
-          <view class="mini-btn" bindtap="copyAccount" data-account="{{item.accountUsername}}">
-            <text>复制</text>
-          </view>
         </view>
         <view class="meta-row">
           <text class="meta-label">密码</text>
           <text class="meta-value {{revealedPasswords[item.gardenId] ? '' : 'password-mask'}}">{{revealedPasswords[item.gardenId] || '••••••••'}}</text>
           <view class="mini-btn" bindtap="togglePassword" data-garden-id="{{item.gardenId}}">
             <text>{{revealedPasswords[item.gardenId] ? '隐藏' : '查看'}}</text>
-          </view>
-          <view class="mini-btn" bindtap="copyPassword" data-garden-id="{{item.gardenId}}">
-            <text>复制</text>
           </view>
         </view>
         <view class="card-footer">
